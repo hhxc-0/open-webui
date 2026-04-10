@@ -9,6 +9,7 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    if: false
     environment:
       name: pypi
       url: https://pypi.org/p/open-webui
