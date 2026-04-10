@@ -2339,9 +2339,17 @@ async def process_chat_payload(request, form_data, user, metadata, model):
                 form_data = await chat_memory_handler(request, form_data, extra_params, user)
 
         if 'web_search' in features and features['web_search']:
-            # Skip forced RAG web search when native FC is enabled - model can use web_search tool
-            if metadata.get('params', {}).get('function_calling') != 'native':
-                form_data = await chat_web_search_handler(request, form_data, extra_params, user)
+            mode = features['web_search']
+            if mode == 'external' or mode is True:
+                # RAG-based external web search
+                if metadata.get('params', {}).get('function_calling') != 'native':
+                    form_data = await chat_web_search_handler(request, form_data, extra_params, user)
+            elif mode == 'native':
+                # Signal the router to inject the provider's native web search tool
+                metadata['native_web_search'] = True
+
+        if 'raw_documents' in features and features['raw_documents']:
+            metadata['raw_documents'] = True
 
         if 'image_generation' in features and features['image_generation']:
             # Skip forced image generation when native FC is enabled - model can use generate_image tool
@@ -2694,7 +2702,7 @@ async def process_chat_payload(request, form_data, user, metadata, model):
     # Check if file context extraction is enabled for this model (default True)
     file_context_enabled = (model.get('info', {}).get('meta', {}).get('capabilities') or {}).get('file_context', True)
 
-    if file_context_enabled:
+    if file_context_enabled and not metadata.get('raw_documents'):
         try:
             form_data, flags = await chat_completion_files_handler(request, form_data, extra_params, user)
             sources.extend(flags.get('sources', []))

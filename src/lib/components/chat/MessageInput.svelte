@@ -95,6 +95,9 @@
 	import Knobs from '../icons/Knobs.svelte';
 	import ValvesModal from '../workspace/common/ValvesModal.svelte';
 	import Note from '../icons/Note.svelte';
+	import Bolt from '../icons/Bolt.svelte';
+	import DocumentPage from '../icons/DocumentPage.svelte';
+	import LightBulb from '../icons/LightBulb.svelte';
 	import { goto } from '$app/navigation';
 	import InputModal from '../common/InputModal.svelte';
 	import Expand from '../icons/Expand.svelte';
@@ -128,8 +131,11 @@
 	export let selectedFilterIds = [];
 
 	export let imageGenerationEnabled = false;
-	export let webSearchEnabled = false;
+	export let webSearchMode: '' | 'external' | 'native' = '';
 	export let codeInterpreterEnabled = false;
+	export let rawDocumentsEnabled = false;
+	export let thinkingEffort: string | null | undefined = null;
+	export let onThinkingEffortChange: (val: string | null) => void = () => {};
 
 	export let pendingOAuthTools = [];
 
@@ -170,8 +176,9 @@
 		selectedToolIds,
 		selectedFilterIds,
 		imageGenerationEnabled,
-		webSearchEnabled,
-		codeInterpreterEnabled
+		webSearchMode,
+		codeInterpreterEnabled,
+		rawDocumentsEnabled
 	});
 
 	const inputVariableHandler = async (text: string): Promise<string> => {
@@ -1512,7 +1519,7 @@
 															selectedToolIds = [];
 															selectedFilterIds = [];
 
-															webSearchEnabled = false;
+															webSearchMode = '';
 															imageGenerationEnabled = false;
 															codeInterpreterEnabled = false;
 														}
@@ -1635,9 +1642,12 @@
 											{showCodeInterpreterButton}
 											bind:selectedToolIds
 											bind:selectedFilterIds
-											bind:webSearchEnabled
+											bind:webSearchMode
 											bind:imageGenerationEnabled
 											bind:codeInterpreterEnabled
+											bind:rawDocumentsEnabled
+											{thinkingEffort}
+											{onThinkingEffortChange}
 											closeOnOutsideClick={integrationsMenuCloseOnOutsideClick}
 											onShowValves={(e) => {
 												const { type, id } = e;
@@ -1742,17 +1752,27 @@
 											{/if}
 										{/each}
 
-										{#if webSearchEnabled}
+										{#if webSearchMode === 'external' || ($settings?.webSearch ?? false) === 'always'}
 											<Tooltip content={$i18n.t('Web Search')} placement="top">
 												<button
-													on:click|preventDefault={() => (webSearchEnabled = !webSearchEnabled)}
+													on:click|preventDefault={() => (webSearchMode = '')}
 													type="button"
-													class="group p-[7px] flex gap-1.5 items-center text-sm rounded-full transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden {webSearchEnabled ||
-													($settings?.webSearch ?? false) === 'always'
-														? ' text-sky-500 dark:text-sky-300 bg-sky-50 hover:bg-sky-100 dark:bg-sky-400/10 dark:hover:bg-sky-600/10 border border-sky-200/40 dark:border-sky-500/20'
-														: 'bg-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 '}"
+													class="group p-[7px] flex gap-1.5 items-center text-sm rounded-full transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden text-sky-500 dark:text-sky-300 bg-sky-50 hover:bg-sky-100 dark:bg-sky-400/10 dark:hover:bg-sky-600/10 border border-sky-200/40 dark:border-sky-500/20"
 												>
 													<GlobeAlt className="size-4" strokeWidth="1.75" />
+													<div class="hidden group-hover:block">
+														<XMark className="size-4" strokeWidth="1.75" />
+													</div>
+												</button>
+											</Tooltip>
+										{:else if webSearchMode === 'native'}
+											<Tooltip content={$i18n.t('Native Web Search')} placement="top">
+												<button
+													on:click|preventDefault={() => (webSearchMode = '')}
+													type="button"
+													class="group p-[7px] flex gap-1.5 items-center text-sm rounded-full transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden text-sky-500 dark:text-sky-300 bg-sky-50 hover:bg-sky-100 dark:bg-sky-400/10 dark:hover:bg-sky-600/10 border border-sky-200/40 dark:border-sky-500/20"
+												>
+													<Bolt className="size-4" strokeWidth="1.75" />
 													<div class="hidden group-hover:block">
 														<XMark className="size-4" strokeWidth="1.75" />
 													</div>
@@ -1797,6 +1817,40 @@
 												>
 													<Terminal className="size-3.5" strokeWidth="2" />
 
+													<div class="hidden group-hover:block">
+														<XMark className="size-4" strokeWidth="1.75" />
+													</div>
+												</button>
+											</Tooltip>
+										{/if}
+
+										{#if rawDocumentsEnabled}
+											<Tooltip content={$i18n.t('Raw Documents')} placement="top">
+												<button
+													on:click|preventDefault={() => (rawDocumentsEnabled = !rawDocumentsEnabled)}
+													type="button"
+													class="group p-[7px] flex gap-1.5 items-center text-sm rounded-full transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden text-sky-500 dark:text-sky-300 bg-sky-50 hover:bg-sky-100 dark:bg-sky-400/10 dark:hover:bg-sky-600/10 border border-sky-200/40 dark:border-sky-500/20"
+												>
+													<DocumentPage className="size-4" strokeWidth="1.75" />
+													<div class="hidden group-hover:block">
+														<XMark className="size-4" strokeWidth="1.75" />
+													</div>
+												</button>
+											</Tooltip>
+										{/if}
+
+										{#if thinkingEffort != null}
+											<Tooltip
+												content={$i18n.t('Thinking Effort: {{effort}}', { effort: thinkingEffort })}
+												placement="top"
+											>
+												<button
+													on:click|preventDefault={() => onThinkingEffortChange(null)}
+													type="button"
+													class="group px-2 p-[5px] flex gap-1.5 items-center text-sm rounded-full transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden text-sky-500 dark:text-sky-300 bg-sky-50 hover:bg-sky-100 dark:bg-sky-400/10 dark:hover:bg-sky-600/10 border border-sky-200/40 dark:border-sky-500/20"
+												>
+													<LightBulb className="size-4" strokeWidth="1.75" />
+													<span class="text-xs">{thinkingEffort}</span>
 													<div class="hidden group-hover:block">
 														<XMark className="size-4" strokeWidth="1.75" />
 													</div>

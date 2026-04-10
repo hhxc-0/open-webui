@@ -147,8 +147,15 @@
 	let pendingOAuthTools = [];
 
 	let imageGenerationEnabled = false;
-	let webSearchEnabled = false;
+	let webSearchMode: '' | 'external' | 'native' = '';
 	let codeInterpreterEnabled = false;
+	let rawDocumentsEnabled = false;
+	let thinkingEffort: null | 'low' | 'medium' | 'high' | 'xhigh' = null;
+
+	// One-way sync: AdvancedParams (via params.reasoning_effort) → toolbar.
+	// The reverse direction (toolbar → params) is handled by onThinkingEffortChange below,
+	// so there is no reactive cycle.
+	$: thinkingEffort = (params?.reasoning_effort ?? null) as typeof thinkingEffort;
 
 	let showCommands = false;
 
@@ -185,7 +192,7 @@
 		files = [];
 		selectedToolIds = [];
 		selectedFilterIds = [];
-		webSearchEnabled = false;
+		webSearchMode = '';
 		imageGenerationEnabled = false;
 
 		const storageChatInput = sessionStorage.getItem(
@@ -215,9 +222,10 @@
 						files = input.files;
 						selectedToolIds = input.selectedToolIds;
 						selectedFilterIds = input.selectedFilterIds;
-						webSearchEnabled = input.webSearchEnabled;
+						webSearchMode = input.webSearchMode ?? (input.webSearchEnabled ? 'external' : '');
 						imageGenerationEnabled = input.imageGenerationEnabled;
 						codeInterpreterEnabled = input.codeInterpreterEnabled;
+						rawDocumentsEnabled = input.rawDocumentsEnabled ?? false;
 					}
 				} catch (e) {}
 			} else {
@@ -276,9 +284,10 @@
 		selectedToolIds = [];
 		selectedFilterIds = [];
 		pendingOAuthTools = [];
-		webSearchEnabled = false;
+		webSearchMode = '';
 		imageGenerationEnabled = false;
 		codeInterpreterEnabled = false;
+		rawDocumentsEnabled = false;
 
 		if (selectedModelIds.filter((id) => id).length > 0) {
 			setDefaults();
@@ -351,7 +360,7 @@
 					$config?.features?.enable_web_search &&
 					($user?.role === 'admin' || $user?.permissions?.features?.web_search)
 				) {
-					webSearchEnabled = model.info.meta.defaultFeatureIds.includes('web_search');
+					webSearchMode = model.info.meta.defaultFeatureIds.includes('web_search') ? 'external' : '';
 				}
 
 				if (
@@ -738,9 +747,10 @@
 				files = [];
 				selectedToolIds = [];
 				selectedFilterIds = [];
-				webSearchEnabled = false;
+				webSearchMode = '';
 				imageGenerationEnabled = false;
 				codeInterpreterEnabled = false;
+				rawDocumentsEnabled = false;
 
 				try {
 					const input = JSON.parse(storageChatInput);
@@ -750,9 +760,10 @@
 						files = input.files;
 						selectedToolIds = input.selectedToolIds;
 						selectedFilterIds = input.selectedFilterIds;
-						webSearchEnabled = input.webSearchEnabled;
+						webSearchMode = input.webSearchMode ?? (input.webSearchEnabled ? 'external' : '');
 						imageGenerationEnabled = input.imageGenerationEnabled;
 						codeInterpreterEnabled = input.codeInterpreterEnabled;
+						rawDocumentsEnabled = input.rawDocumentsEnabled ?? false;
 					}
 				} catch (e) {}
 			}
@@ -1166,7 +1177,7 @@
 		}
 
 		if ($page.url.searchParams.get('web-search') === 'true') {
-			webSearchEnabled = true;
+			webSearchMode = 'external';
 		}
 
 		if ($page.url.searchParams.get('image-generation') === 'true') {
@@ -2038,8 +2049,9 @@
 				web_search:
 					$config?.features?.enable_web_search &&
 					($user?.role === 'admin' || $user?.permissions?.features?.web_search)
-						? webSearchEnabled
-						: false
+						? webSearchMode
+						: '',
+				raw_documents: rawDocumentsEnabled
 			};
 
 		const currentModels = atSelectedModel?.id ? [atSelectedModel.id] : selectedModels;
@@ -2049,7 +2061,7 @@
 			).length === currentModels.length
 		) {
 			if ($config?.features?.enable_web_search && ($settings?.webSearch ?? false) === 'always') {
-				features = { ...features, web_search: true };
+				features = { ...features, web_search: 'external' };
 			}
 		}
 
@@ -2853,7 +2865,12 @@
 									bind:imageGenerationEnabled
 									bind:codeInterpreterEnabled
 									{pendingOAuthTools}
-									bind:webSearchEnabled
+									bind:webSearchMode
+									bind:rawDocumentsEnabled
+									{thinkingEffort}
+									onThinkingEffortChange={(val) => {
+										params = { ...params, reasoning_effort: val };
+									}}
 									bind:atSelectedModel
 									bind:showCommands
 									bind:dragged
@@ -2936,7 +2953,12 @@
 									bind:selectedFilterIds
 									bind:imageGenerationEnabled
 									bind:codeInterpreterEnabled
-									bind:webSearchEnabled
+									bind:webSearchMode
+									bind:rawDocumentsEnabled
+									{thinkingEffort}
+									onThinkingEffortChange={(val) => {
+										params = { ...params, reasoning_effort: val };
+									}}
 									bind:atSelectedModel
 									bind:showCommands
 									bind:dragged

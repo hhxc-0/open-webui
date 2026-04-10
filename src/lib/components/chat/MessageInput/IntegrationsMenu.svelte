@@ -27,6 +27,8 @@
 	import Terminal from '$lib/components/icons/Terminal.svelte';
 	import ChevronRight from '$lib/components/icons/ChevronRight.svelte';
 	import ChevronLeft from '$lib/components/icons/ChevronLeft.svelte';
+	import DocumentPage from '$lib/components/icons/DocumentPage.svelte';
+	import LightBulb from '$lib/components/icons/LightBulb.svelte';
 
 	const i18n = getContext('i18n');
 
@@ -40,11 +42,14 @@
 	export let selectedFilterIds: string[] = [];
 
 	export let showWebSearchButton = false;
-	export let webSearchEnabled = false;
+	export let webSearchMode: '' | 'external' | 'native' = '';
 	export let showImageGenerationButton = false;
 	export let imageGenerationEnabled = false;
 	export let showCodeInterpreterButton = false;
 	export let codeInterpreterEnabled = false;
+	export let rawDocumentsEnabled = false;
+	export let thinkingEffort: string | null | undefined = null;
+	export let onThinkingEffortChange: (val: string | null) => void = () => {};
 
 	export let onShowValves: Function;
 	export let onClose: Function;
@@ -215,34 +220,29 @@
 					{/if}
 
 					{#if showWebSearchButton}
-						<Tooltip content={$i18n.t('Search the internet')} placement="top-start">
-							<button
-								class="flex w-full justify-between gap-2 items-center px-3 py-1.5 text-sm cursor-pointer rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50"
-								on:click={() => {
-									webSearchEnabled = !webSearchEnabled;
-								}}
-							>
-								<div class="flex-1 truncate">
-									<div class="flex flex-1 gap-2 items-center">
-										<div class="shrink-0">
-											<GlobeAlt />
-										</div>
-
-										<div class=" truncate">{$i18n.t('Web Search')}</div>
-									</div>
+						<div class="px-3 py-1.5 text-sm">
+							<div class="flex flex-1 gap-2 items-center mb-1.5">
+								<div class="shrink-0">
+									<GlobeAlt className="size-4" strokeWidth="1.5" />
 								</div>
-
-								<div class=" shrink-0">
-									<Switch
-										state={webSearchEnabled}
-										on:change={async (e) => {
-											const state = e.detail;
-											await tick();
+								<div class="truncate">{$i18n.t('Web Search')}</div>
+							</div>
+							<div class="flex gap-1">
+								{#each [['', $i18n.t('Off')], ['external', $i18n.t('External')], ['native', $i18n.t('Native')]] as [mode, label]}
+									<button
+										class="flex-1 py-0.5 text-xs rounded-lg transition-colors
+											{webSearchMode === mode
+												? 'bg-sky-100 text-sky-600 dark:bg-sky-400/20 dark:text-sky-300'
+												: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}"
+										on:click={() => {
+											webSearchMode = mode;
 										}}
-									/>
-								</div>
-							</button>
-						</Tooltip>
+									>
+										{label}
+									</button>
+								{/each}
+							</div>
+						</div>
 					{/if}
 
 					{#if showImageGenerationButton}
@@ -310,6 +310,57 @@
 							</button>
 						</Tooltip>
 					{/if}
+
+					<Tooltip content={$i18n.t('Send files directly to the API without RAG processing')} placement="top-start">
+						<button
+							class="flex w-full justify-between gap-2 items-center px-3 py-1.5 text-sm cursor-pointer rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50"
+							on:click={() => {
+								rawDocumentsEnabled = !rawDocumentsEnabled;
+							}}
+						>
+							<div class="flex-1 truncate">
+								<div class="flex flex-1 gap-2 items-center">
+									<div class="shrink-0">
+										<DocumentPage className="size-4" strokeWidth="1.5" />
+									</div>
+									<div class=" truncate">{$i18n.t('Raw Documents')}</div>
+								</div>
+							</div>
+							<div class=" shrink-0">
+								<Switch
+									state={rawDocumentsEnabled}
+									on:change={async (e) => {
+										const state = e.detail;
+										await tick();
+									}}
+								/>
+							</div>
+						</button>
+					</Tooltip>
+
+					<div class="px-3 py-1.5 text-sm">
+						<div class="flex flex-1 gap-2 items-center mb-1.5">
+							<div class="shrink-0">
+								<LightBulb className="size-4" strokeWidth="1.5" />
+							</div>
+							<div class="truncate">{$i18n.t('Thinking Effort')}</div>
+						</div>
+						<div class="flex gap-1">
+							{#each [[null, $i18n.t('Off')], ['low', $i18n.t('Low')], ['medium', $i18n.t('Medium')], ['high', $i18n.t('High')], ['xhigh', 'xhigh']] as [level, label]}
+								<button
+									class="flex-1 py-0.5 text-xs rounded-lg transition-colors
+										{(thinkingEffort ?? null) === level
+											? 'bg-sky-100 text-sky-600 dark:bg-sky-400/20 dark:text-sky-300'
+											: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}"
+									on:click={() => {
+										onThinkingEffortChange(level);
+									}}
+								>
+									{label}
+								</button>
+							{/each}
+						</div>
+					</div>
 				</div>
 			{:else if tab === 'tools' && tools}
 				<div in:fly={{ x: 20, duration: 150 }}>

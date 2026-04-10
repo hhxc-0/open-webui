@@ -53,8 +53,11 @@
 
 	export let imageGenerationEnabled = false;
 	export let codeInterpreterEnabled = false;
-	export let webSearchEnabled = false;
+	export let webSearchMode: '' | 'external' | 'native' = '';
+	export let rawDocumentsEnabled = false;
+	export let thinkingEffort: string | null | undefined = null;
 
+	export let onThinkingEffortChange: (val: string | null) => void = () => {};
 	export let onUpload: Function = (e) => {};
 	export let onSelect = (e) => {};
 	export let onChange = (e) => {};
@@ -215,7 +218,10 @@
 					bind:selectedFilterIds
 					bind:imageGenerationEnabled
 					bind:codeInterpreterEnabled
-					bind:webSearchEnabled
+					bind:webSearchMode
+					bind:rawDocumentsEnabled
+					{thinkingEffort}
+					{onThinkingEffortChange}
 					bind:atSelectedModel
 					bind:showCommands
 					bind:dragged

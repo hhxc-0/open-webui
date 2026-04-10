@@ -771,6 +771,43 @@ def is_openai_new_model(model: str) -> bool:
     return False
 
 
+def _get_native_search_tool(url: str) -> dict:
+    """Return the provider-appropriate native web search tool definition."""
+    if 'anthropic.com' in url:
+        return {'type': 'web_search_20250305', 'name': 'web_search'}
+    return {'type': 'web_search'}  # OpenAI, xAI, and others
+
+
+def _build_input_file_item(file_item: dict) -> 'dict | None':
+    """Read a file from storage and return a Responses API input_file content part."""
+    import base64
+    from open_webui.models.files import Files
+    from open_webui.storage.provider import Storage
+
+    file_id = file_item.get('id')
+    if not file_id:
+        return None
+    file_model = Files.get_file_by_id(file_id)
+    if not file_model or not file_model.path:
+        return None
+    try:
+        resolved_path = Storage.get_file(file_model.path)
+        with open(resolved_path, 'rb') as f:
+            content = f.read()
+        b64 = base64.b64encode(content).decode('utf-8')
+        meta = file_model.meta
+        mime_type = (meta.get('content_type') if isinstance(meta, dict) else None) or 'application/octet-stream'
+        filename = file_model.filename or file_item.get('name', 'file')
+        return {
+            'type': 'input_file',
+            'filename': filename,
+            'file_data': f'data:{mime_type};base64,{b64}',
+        }
+    except Exception:
+        log.exception('Failed to build input_file item for raw document upload')
+        return None
+
+
 def convert_to_azure_payload(url, payload: dict, api_version: str):
     model = payload.get('model', '')
 
@@ -907,6 +944,8 @@ def convert_to_responses_payload(payload: dict) -> dict:
                     url_data = part.get('image_url', {})
                     url = url_data.get('url', '') if isinstance(url_data, dict) else url_data
                     content_parts.append({'type': 'input_image', 'image_url': url})
+                elif part.get('type') == 'input_file':
+                    content_parts.append(part)
         else:
             content_parts = [{'type': text_type, 'text': str(content)}]
 
@@ -962,6 +1001,14 @@ def convert_to_responses_payload(payload: dict) -> dict:
                 converted_tools.append(tool)
         responses_payload['tools'] = converted_tools
 
+    # Convert reasoning_effort shorthand to reasoning: {effort: ...} for Responses API
+    if 'reasoning_effort' in responses_payload:
+        effort = responses_payload.pop('reasoning_effort')
+        existing_reasoning = responses_payload.get('reasoning') or {}
+        if 'effort' not in existing_reasoning:
+            existing_reasoning['effort'] = effort
+        responses_payload['reasoning'] = existing_reasoning
+
     return responses_payload
 
 
@@ -971,15 +1018,36 @@ def convert_responses_result(response: dict) -> dict:
 
     Extracts text from message output items so all downstream consumers
     (frontend tasks, get_content_from_response) work without modification.
+    Also captures reasoning summary text and refusal content.
     """
     output_items = response.get('output', [])
 
     content = ''
+    reasoning_content = None
     for item in output_items:
         if item.get('type') == 'message':
             for part in item.get('content', []):
                 if part.get('type') == 'output_text':
                     content += part.get('text', '')
+                elif part.get('type') == 'refusal':
+                    content += part.get('refusal', '')
+        elif item.get('type') == 'reasoning':
+            summary_parts = item.get('summary', []) or []
+            reasoning_text = '\n'.join(
+                p.get('text', '') for p in summary_parts if p.get('type') == 'summary_text'
+            )
+            if reasoning_text:
+                reasoning_content = reasoning_text
+
+    message: dict = {'role': 'assistant', 'content': content}
+    if reasoning_content is not None:
+        message['reasoning_content'] = reasoning_content
+
+    status = response.get('status', '')
+    if status == 'incomplete':
+        finish_reason = (response.get('incomplete_details') or {}).get('reason', 'length')
+    else:
+        finish_reason = 'stop'
 
     return {
         'id': response.get('id', ''),
@@ -988,11 +1056,8 @@ def convert_responses_result(response: dict) -> dict:
         'choices': [
             {
                 'index': 0,
-                'message': {
-                    'role': 'assistant',
-                    'content': content,
-                },
-                'finish_reason': 'stop',
+                'message': message,
+                'finish_reason': finish_reason,
             }
         ],
         'usage': response.get('usage', {}),
@@ -1129,6 +1194,32 @@ async def generate_chat_completion(
     headers, cookies = await get_headers_and_cookies(request, url, key, api_config, metadata, user=user)
 
     is_responses = api_config.get('api_type') == 'responses'
+
+    # Native web search: inject provider-specific tool, bypassing RAG (set in middleware)
+    if metadata and metadata.get('native_web_search'):
+        search_tool = _get_native_search_tool(url)
+        existing_tools = payload.get('tools', []) or []
+        tool_type = search_tool['type']
+        if not any(t.get('type') == tool_type for t in existing_tools):
+            payload['tools'] = [search_tool, *existing_tools]
+        metadata.pop('native_web_search', None)
+
+    # Raw documents: for Responses API, inject file content as input_file items directly
+    if is_responses and metadata and metadata.get('raw_documents'):
+        raw_files = metadata.get('files') or []
+        file_parts = [p for f in raw_files if (p := _build_input_file_item(f)) is not None]
+        if file_parts and payload.get('messages'):
+            last_user_idx = next(
+                (i for i in range(len(payload['messages']) - 1, -1, -1)
+                 if payload['messages'][i].get('role') == 'user'),
+                None,
+            )
+            if last_user_idx is not None:
+                msg = payload['messages'][last_user_idx]
+                existing = msg.get('content', '')
+                if isinstance(existing, str):
+                    existing = [{'type': 'text', 'text': existing}] if existing else []
+                payload['messages'][last_user_idx]['content'] = existing + file_parts
 
     if api_config.get('azure', False):
         api_version = api_config.get('api_version', '2023-03-15-preview')
@@ -1317,6 +1408,12 @@ class ResponsesForm(BaseModel):
     store: Optional[bool] = None
     reasoning: Optional[dict] = None
     previous_response_id: Optional[str] = None
+    include: Optional[list] = None
+    parallel_tool_calls: Optional[bool] = None
+    service_tier: Optional[str] = None
+    user: Optional[str] = None
+    background: Optional[bool] = None
+    max_tool_calls: Optional[int] = None
 
 
 @router.post('/responses')
