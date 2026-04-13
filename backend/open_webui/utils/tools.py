@@ -455,7 +455,7 @@ def get_builtin_tools(
         is_builtin_tool_enabled('web_search')
         and getattr(request.app.state.config, 'ENABLE_WEB_SEARCH', False)
         and get_model_capability('web_search')
-        and features.get('web_search')
+        and features.get('web_search') == 'external'
     ):
         builtin_functions.extend([search_web, fetch_url])
 

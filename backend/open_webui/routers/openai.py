@@ -1200,8 +1200,12 @@ async def generate_chat_completion(
         search_tool = _get_native_search_tool(url)
         existing_tools = payload.get('tools', []) or []
         tool_type = search_tool['type']
-        if not any(t.get('type') == tool_type for t in existing_tools):
-            payload['tools'] = [search_tool, *existing_tools]
+        if any(t.get('type') == tool_type for t in existing_tools):
+            raise ValueError(
+                f"Conflicting web search tool already present; cannot use native web search "
+                f"when OpenWebUI's built-in web search tools are also enabled."
+            )
+        payload['tools'] = [search_tool, *existing_tools]
         metadata.pop('native_web_search', None)
 
     # Raw documents: for Responses API, inject file content as input_file items directly
