@@ -306,10 +306,9 @@
 													<!-- EXPERIMENTAL INPUT TYPE, DO NOT USE IN PRODUCTION -->
 													<div class="flex flex-col items-center gap-1">
 														<MapSelector
-															setViewLocation={((variableValues[variable] ?? '').includes(',') ??
-															false)
+															setViewLocation={((variableValues[variable] ?? '').includes(',')
 																? variableValues[variable].split(',')
-																: null}
+																: null)}
 															onClick={(value) => {
 																variableValues[variable] = value;
 															}}

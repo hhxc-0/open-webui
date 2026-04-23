@@ -784,16 +784,17 @@ def _get_native_search_tool(url: str) -> dict:
     return {'type': 'web_search'}  # OpenAI, xAI, and others
 
 
-def _build_input_file_item(file_item: dict) -> 'dict | None':
+async def _build_input_file_item(file_item: dict) -> 'dict | None':
     """Read a file from storage and return a Responses API input_file content part."""
     import base64
+    import mimetypes
     from open_webui.models.files import Files
     from open_webui.storage.provider import Storage
 
     file_id = file_item.get('id')
     if not file_id:
         return None
-    file_model = Files.get_file_by_id(file_id)
+    file_model = await Files.get_file_by_id(file_id)
     if not file_model or not file_model.path:
         return None
     try:
@@ -803,6 +804,26 @@ def _build_input_file_item(file_item: dict) -> 'dict | None':
         b64 = base64.b64encode(content).decode('utf-8')
         meta = file_model.meta
         mime_type = (meta.get('content_type') if isinstance(meta, dict) else None) or 'application/octet-stream'
+
+        # Map unsupported MIME types to text/plain for raw document uploads
+        # OpenAI's API supports: text/csv, text/x.cs, text/html, text/json, text/plain, text/xml
+        unsupported_mime_types = {
+            'application/x-shellscript',
+            'application/x-sh',
+            'text/x-sh',
+            'application/x-csh',
+            'text/x-csh',
+            'application/x-shellscript',
+        }
+        if mime_type in unsupported_mime_types:
+            mime_type = 'text/plain'
+
+        # Fallback to mimetypes for common text-based files that often get misclassified
+        if mime_type == 'application/octet-stream':
+            guessed_type, _ = mimetypes.guess_type(file_model.filename or file_item.get('name', 'file'))
+            if guessed_type:
+                mime_type = guessed_type
+
         filename = file_model.filename or file_item.get('name', 'file')
         return {
             'type': 'input_file',
@@ -1215,7 +1236,11 @@ async def generate_chat_completion(
     # Raw documents: for Responses API, inject file content as input_file items directly
     if is_responses and metadata and metadata.get('raw_documents'):
         raw_files = metadata.get('files') or []
-        file_parts = [p for f in raw_files if (p := _build_input_file_item(f)) is not None]
+        file_parts = []
+        for f in raw_files:
+            p = await _build_input_file_item(f)
+            if p is not None:
+                file_parts.append(p)
         if file_parts and payload.get('messages'):
             last_user_idx = next(
                 (i for i in range(len(payload['messages']) - 1, -1, -1)

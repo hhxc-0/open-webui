@@ -808,7 +808,7 @@
 
 				reader.readAsDataURL(file['type'] === 'image/heic' ? await convertHeicToJpeg(file) : file);
 			} else {
-				uploadFileHandler(file);
+				uploadFileHandler(file, !rawDocumentsEnabled);
 			}
 		});
 	};
@@ -1631,7 +1631,7 @@
 													const file = new File([fileData.blob], fileData.name, {
 														type: fileData.blob.type
 													});
-													await uploadFileHandler(file);
+													await uploadFileHandler(file, !rawDocumentsEnabled);
 												} else {
 													console.log('No file was selected from Google Drive');
 												}
@@ -1651,7 +1651,7 @@
 													const file = new File([fileData.blob], fileData.name, {
 														type: fileData.blob.type || 'application/octet-stream'
 													});
-													await uploadFileHandler(file);
+													await uploadFileHandler(file, !rawDocumentsEnabled);
 												} else {
 													console.log('No file was selected from OneDrive');
 												}
@@ -1675,7 +1675,7 @@
 										</div>
 									</InputMenu>
 
-									{#if showWebSearchButton || showImageGenerationButton || showCodeInterpreterButton || showToolsButton || (toggleFilters && toggleFilters.length > 0)}
+									{#if true}
 										<div
 											class="flex self-center w-[1px] h-4 mx-1 bg-gray-200/50 dark:bg-gray-800/50"
 										/>
