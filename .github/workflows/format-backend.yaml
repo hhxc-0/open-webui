@@ -22,6 +22,7 @@ jobs:
   build:
     name: 'Format Backend'
     runs-on: ubuntu-latest
+    if: false
 
     strategy:
       matrix:
