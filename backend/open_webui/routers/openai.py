@@ -1089,9 +1089,7 @@ def convert_responses_result(response: dict) -> dict:
                     content += part.get('refusal', '')
         elif item.get('type') == 'reasoning':
             summary_parts = item.get('summary', []) or []
-            reasoning_text = '\n'.join(
-                p.get('text', '') for p in summary_parts if p.get('type') == 'summary_text'
-            )
+            reasoning_text = '\n'.join(p.get('text', '') for p in summary_parts if p.get('type') == 'summary_text')
             if reasoning_text:
                 reasoning_content = reasoning_text
 
@@ -1238,7 +1236,7 @@ async def generate_chat_completion(
         tool_type = search_tool['type']
         if any(t.get('type') == tool_type for t in existing_tools):
             raise ValueError(
-                f"Conflicting web search tool already present; cannot use native web search "
+                f'Conflicting web search tool already present; cannot use native web search '
                 f"when OpenWebUI's built-in web search tools are also enabled."
             )
         payload['tools'] = [search_tool, *existing_tools]
@@ -1254,8 +1252,11 @@ async def generate_chat_completion(
                 file_parts.append(p)
         if file_parts and payload.get('messages'):
             last_user_idx = next(
-                (i for i in range(len(payload['messages']) - 1, -1, -1)
-                 if payload['messages'][i].get('role') == 'user'),
+                (
+                    i
+                    for i in range(len(payload['messages']) - 1, -1, -1)
+                    if payload['messages'][i].get('role') == 'user'
+                ),
                 None,
             )
             if last_user_idx is not None:
