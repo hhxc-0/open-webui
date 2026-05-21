@@ -523,6 +523,8 @@
 					}, 100);
 				} else if (type === 'chat:message:error') {
 					message.error = data.error;
+				} else if (type === 'chat:message:context') {
+					message.enrichedContext = data.context;
 				} else if (type === 'chat:message:follow_ups') {
 					message.followUps = data.follow_ups;
 
@@ -3245,6 +3247,7 @@
 					bind:pane={controlPane}
 					chatId={$chatId}
 					modelId={selectedModelIds?.at(0) ?? null}
+					{prompt}
 					models={selectedModelIds.reduce((a, e, i, arr) => {
 						const model = $models.find((m) => m.id === e);
 						if (model) {

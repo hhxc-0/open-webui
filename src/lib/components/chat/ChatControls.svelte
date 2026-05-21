@@ -1,5 +1,5 @@
 <script context="module" lang="ts">
-	let savedTab: 'controls' | 'files' | 'overview' = 'controls';
+	let savedTab: 'controls' | 'files' | 'overview' | 'context' = 'controls';
 </script>
 
 <script lang="ts">
@@ -34,6 +34,7 @@
 	import FileNav from './FileNav.svelte';
 	import PyodideFileNav from './PyodideFileNav.svelte';
 	import Overview from './Overview.svelte';
+	import ContextView from './ContextView.svelte';
 
 	const i18n = getContext('i18n');
 
@@ -44,6 +45,7 @@
 
 	export let chatFiles = [];
 	export let params = {};
+	export let prompt = '';
 
 	export let eventTarget: EventTarget;
 	export let submitPrompt: Function;
@@ -78,17 +80,20 @@
 				($user?.permissions?.features?.direct_tool_servers ?? true))) ||
 		(codeInterpreterEnabled && $config?.code?.interpreter_engine !== 'jupyter');
 	$: showOverviewTab = hasMessages;
+	$: showContextTab = $user?.role === 'admin' && hasMessages;
 
 	// Tab fallback: if active tab becomes hidden, switch to next available
 	$: if (!showOverviewTab && activeTab === 'overview') activeTab = 'controls';
 	$: if (!showFilesTab && activeTab === 'files') activeTab = 'controls';
+	$: if (!showContextTab && activeTab === 'context') activeTab = 'controls';
 	$: if (!showControlsTab && activeTab === 'controls') {
 		if (showFilesTab) activeTab = 'files';
 		else if (showOverviewTab) activeTab = 'overview';
+		else if (showContextTab) activeTab = 'context';
 	}
 
 	// Auto-close if there are no visible tabs
-	$: if (!showControlsTab && !showFilesTab && !showOverviewTab) {
+	$: if (!showControlsTab && !showFilesTab && !showOverviewTab && !showContextTab) {
 		showControls.set(false);
 	}
 
@@ -338,6 +343,17 @@
 										{$i18n.t('Overview')}
 									</button>
 								{/if}
+								{#if showContextTab}
+									<button
+										class="px-2.5 py-1 text-sm rounded-lg transition whitespace-nowrap {activeTab ===
+										'context'
+											? 'bg-gray-100 dark:bg-gray-800 font-medium text-gray-900 dark:text-white'
+											: 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}"
+										on:click={() => (activeTab = 'context')}
+									>
+										{$i18n.t('Context')}
+									</button>
+								{/if}
 							</div>
 							<button
 								class="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition text-gray-500 dark:text-gray-400"
@@ -360,7 +376,7 @@
 						<div
 							class="flex-1 min-h-0 {activeTab === 'overview'
 								? 'h-full'
-								: activeTab === 'controls'
+								: activeTab === 'controls' || activeTab === 'context'
 									? 'overflow-y-auto px-3 pt-1'
 									: ''}"
 						>
@@ -377,6 +393,8 @@
 								<FileNav onAttach={handleTerminalAttach} {chatId} />
 							{:else if activeTab === 'files' && codeInterpreterEnabled}
 								<PyodideFileNav />
+							{:else if activeTab === 'context'}
+								<ContextView {history} {prompt} {files} chatParams={params} />
 							{:else}
 								<Controls embed={true} {models} bind:chatFiles bind:params />
 							{/if}
@@ -484,6 +502,17 @@
 											{$i18n.t('Overview')}
 										</button>
 									{/if}
+									{#if showContextTab}
+										<button
+											class="px-2.5 py-1 text-sm rounded-lg transition whitespace-nowrap {activeTab ===
+											'context'
+												? 'bg-gray-100 dark:bg-gray-800 font-medium text-gray-900 dark:text-white'
+												: 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}"
+											on:click={() => (activeTab = 'context')}
+										>
+											{$i18n.t('Context')}
+										</button>
+									{/if}
 								</div>
 								<button
 									class="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition text-gray-500 dark:text-gray-400"
@@ -506,7 +535,7 @@
 							<div
 								class="flex-1 min-h-0 {activeTab === 'overview'
 									? 'h-full'
-									: activeTab === 'controls'
+									: activeTab === 'controls' || activeTab === 'context'
 										? 'overflow-y-auto px-3 pt-1'
 										: ''}"
 							>
@@ -528,6 +557,8 @@
 									<FileNav onAttach={handleTerminalAttach} overlay={dragged} {chatId} />
 								{:else if activeTab === 'files' && codeInterpreterEnabled}
 									<PyodideFileNav overlay={dragged} />
+								{:else if activeTab === 'context'}
+									<ContextView {history} {prompt} {files} chatParams={params} />
 								{:else}
 									<Controls embed={true} {models} bind:chatFiles bind:params />
 								{/if}

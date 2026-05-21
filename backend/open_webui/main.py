@@ -1975,6 +1975,45 @@ async def chat_completion(
         try:
             form_data, metadata, events = await process_chat_payload(request, form_data, user, metadata, model)
 
+            # Capture enriched context for the Context tab (admin debugging)
+            enriched_context = None
+            _ctx_chat_id = metadata.get('chat_id', '')
+            _ctx_msg_id = metadata.get('message_id', '')
+            if (
+                _ctx_chat_id
+                and _ctx_msg_id
+                and not _ctx_chat_id.startswith('local:')
+                and not _ctx_chat_id.startswith('channel:')
+            ):
+                try:
+                    from open_webui.utils.middleware import sanitize_context_for_storage
+
+                    enriched_context = sanitize_context_for_storage(form_data)
+                except Exception as e:
+                    log.debug(f'Failed to capture enriched context: {e}')
+
+            if enriched_context:
+                try:
+                    _emitter = await get_event_emitter(metadata)
+                    if _emitter:
+                        await _emitter(
+                            {
+                                'type': 'chat:message:context',
+                                'data': {'context': enriched_context},
+                            }
+                        )
+                except Exception as e:
+                    log.debug(f'Failed to emit enriched context: {e}')
+
+                try:
+                    await Chats.upsert_message_to_chat_by_id_and_message_id(
+                        _ctx_chat_id,
+                        _ctx_msg_id,
+                        {'enrichedContext': enriched_context},
+                    )
+                except Exception as e:
+                    log.debug(f'Failed to persist enriched context: {e}')
+
             response = await chat_completion_handler(request, form_data, user)
 
             # When the upstream provider returns an error (e.g. HTTP 400

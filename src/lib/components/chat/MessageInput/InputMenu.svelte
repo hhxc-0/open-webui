@@ -75,7 +75,7 @@
 		}
 	};
 
-	const onSelect = (item) => {
+	const onSelect = (item, batch = false) => {
 		if (files.find((f) => f.id === item.id)) {
 			return;
 		}
@@ -87,7 +87,9 @@
 			}
 		];
 
-		show = false;
+		if (!batch) {
+			show = false;
+		}
 	};
 </script>
 

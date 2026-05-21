@@ -146,6 +146,44 @@ from open_webui.constants import TASKS
 logging.basicConfig(stream=sys.stdout, level=GLOBAL_LOG_LEVEL)
 log = logging.getLogger(__name__)
 
+# Keys to exclude when extracting model params from form_data
+_CONTEXT_PARAM_EXCLUDE_KEYS = {
+    'messages', 'tools', 'metadata', 'files', 'features', 'variables',
+    'tool_ids', 'terminal_id', 'skill_ids', 'model', 'stream',
+}
+
+
+def sanitize_context_for_storage(form_data):
+    """Extract and sanitize the enriched context for admin inspection.
+
+    Deep-copies the messages array, strips base64 image data, truncates
+    overly long text, and collects model parameters.
+    """
+    import copy
+
+    messages = copy.deepcopy(form_data.get('messages', []))
+
+    for msg in messages:
+        content = msg.get('content')
+        if isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict) and part.get('type') == 'image_url':
+                    url = part.get('image_url', {}).get('url', '')
+                    if url.startswith('data:image/'):
+                        approx_kb = int(len(url) * 3 / 4 / 1024)
+                        part['image_url'] = {'url': f'[image: base64, ~{approx_kb} KB]'}
+        elif isinstance(content, str) and len(content) > 50000:
+            msg['content'] = content[:50000] + f' [truncated, {len(content)} total chars]'
+
+    tools = form_data.get('tools', None)
+
+    params = {
+        k: v for k, v in form_data.items()
+        if k not in _CONTEXT_PARAM_EXCLUDE_KEYS and not k.startswith('__')
+    }
+
+    return {'messages': messages, 'tools': tools, 'params': params}
+
 
 # We believe in one maker of all models, seen and unseen,
 # and in the reasoning which proceeds from the architect.
