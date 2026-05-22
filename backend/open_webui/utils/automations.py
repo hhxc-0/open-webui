@@ -264,14 +264,25 @@ def _resolve_model_features(app, model_id: str) -> dict:
     # and does not work in headless backend execution.
     feature_checks = {
         'web_search': getattr(config, 'ENABLE_WEB_SEARCH', False),
+        'native_web_search': getattr(config, 'ENABLE_WEB_SEARCH', False),
         'image_generation': getattr(config, 'ENABLE_IMAGE_GENERATION', False),
     }
 
     for feature_id in default_feature_ids:
         if feature_id in feature_checks:
-            # Feature must be: in defaultFeatureIds + capability enabled + admin enabled
-            if capabilities.get(feature_id) and feature_checks[feature_id]:
-                features[feature_id] = True
+            # For native_web_search, check the web_search capability
+            cap_key = 'web_search' if feature_id == 'native_web_search' else feature_id
+            if capabilities.get(cap_key) and feature_checks[feature_id]:
+                if feature_id == 'native_web_search':
+                    features['web_search'] = 'native'
+                elif feature_id == 'web_search':
+                    features.setdefault('web_search', 'external')
+                else:
+                    features[feature_id] = True
+
+    # raw_documents has no global toggle; gated on model capability alone
+    if 'raw_documents' in default_feature_ids and capabilities.get('raw_documents'):
+        features['raw_documents'] = True
 
     return features
 

@@ -1669,6 +1669,133 @@ async def embeddings(request: Request, form_data: dict, user=Depends(get_verifie
     return await generate_embeddings(request, form_data, user)
 
 
+async def prepare_chat_request(request: Request, form_data: dict, user):
+    """Resolve model, apply params, and extract metadata from form_data.
+
+    Shared between the real chat completion flow and the preview (dry-run) endpoint.
+    Mutates form_data in place — pops fields that belong in metadata.
+    Returns (model, metadata, message_ids).
+    """
+    model_id = form_data.get('model', None)
+    model_item = form_data.pop('model_item', {})
+
+    metadata = {}
+    model_info = None
+    if not model_item.get('direct', False):
+        if model_id not in request.app.state.MODELS:
+            raise Exception('Model not found')
+
+        model = request.app.state.MODELS[model_id]
+        model_info = await Models.get_model_by_id(model_id)
+
+        # Check if user has access to the model
+        if not BYPASS_MODEL_ACCESS_CONTROL and (user.role != 'admin' or not BYPASS_ADMIN_ACCESS_CONTROL):
+            try:
+                await check_model_access(user, model)
+            except Exception as e:
+                raise e
+    else:
+        model = model_item
+
+        request.state.direct = True
+        request.state.model = model
+
+    # Model params: global defaults as base, per-model overrides win
+    default_model_params = getattr(request.app.state.config, 'DEFAULT_MODEL_PARAMS', None) or {}
+    model_info_params = {
+        **default_model_params,
+        **(model_info.params.model_dump() if model_info and model_info.params else {}),
+    }
+
+    # Check base model existence for custom models
+    if model_info and model_info.base_model_id:
+        base_model_id = model_info.base_model_id
+        if base_model_id not in request.app.state.MODELS:
+            if ENABLE_CUSTOM_MODEL_FALLBACK:
+                default_models = (request.app.state.config.DEFAULT_MODELS or '').split(',')
+
+                fallback_model_id = default_models[0].strip() if default_models[0] else None
+
+                if fallback_model_id and fallback_model_id in request.app.state.MODELS:
+                    # Update model and form_data so routing uses the fallback model's type
+                    model = request.app.state.MODELS[fallback_model_id]
+                    form_data['model'] = fallback_model_id
+                else:
+                    raise Exception('Model not found')
+            else:
+                raise Exception('Model not found')
+
+    # Chat Params
+    stream_delta_chunk_size = form_data.get('params', {}).get('stream_delta_chunk_size')
+    reasoning_tags = form_data.get('params', {}).get('reasoning_tags')
+
+    # Model Params
+    if model_info_params.get('stream_response') is not None:
+        form_data['stream'] = model_info_params.get('stream_response')
+
+    if model_info_params.get('stream_delta_chunk_size'):
+        stream_delta_chunk_size = model_info_params.get('stream_delta_chunk_size')
+
+    if model_info_params.get('reasoning_tags') is not None:
+        reasoning_tags = model_info_params.get('reasoning_tags')
+
+    # parent_id signals intent:
+    #   null   → new chat (root message, no parent)
+    #   value  → follow-up (user message's parentId = prev assistant)
+    #   absent → legacy caller, no chat management
+    is_new_chat = 'parent_id' in form_data and form_data['parent_id'] is None and not form_data.get('chat_id')
+    form_data.pop('parent_id', None)
+    form_data.pop('new_chat', None)  # Legacy field
+
+    # Multi-model: {model_id: assistant_message_id}
+    # Single-model fallback: built from 'model' + 'id'
+    message_ids = form_data.pop('message_ids', None)
+    if not message_ids:
+        message_ids = {model_id: form_data.pop('id', None)}
+    else:
+        form_data.pop('id', None)
+
+    user_message = form_data.pop('user_message', None) or form_data.pop('parent_message', None)
+    metadata = {
+        'user_id': user.id,
+        'chat_id': form_data.pop('chat_id', None),
+        'user_message': user_message,
+        'user_message_id': user_message.get('id') if user_message else None,
+        'assistant_message_id': form_data.pop('assistant_message_id', None),
+        'session_id': form_data.pop('session_id', None),
+        'folder_id': form_data.pop('folder_id', None),
+        'filter_ids': form_data.pop('filter_ids', []),
+        'tool_ids': form_data.get('tool_ids', None),
+        'tool_servers': form_data.pop('tool_servers', None),
+        'files': form_data.get('files', None),
+        'features': form_data.get('features', {}),
+        'variables': form_data.get('variables', {}),
+        'model': model,
+        'direct': model_item.get('direct', False),
+        'params': {
+            'stream_delta_chunk_size': stream_delta_chunk_size,
+            'reasoning_tags': reasoning_tags,
+            'function_calling': (
+                'native'
+                if (
+                    form_data.get('params', {}).get('function_calling') == 'native'
+                    or model_info_params.get('function_calling') == 'native'
+                )
+                else 'default'
+            ),
+        },
+    }
+
+    if is_new_chat:
+        metadata['chat_id'] = str(uuid4())
+
+    metadata['is_new_chat'] = is_new_chat
+    request.state.metadata = metadata
+    form_data['metadata'] = metadata
+
+    return model, metadata, message_ids
+
+
 @app.post('/api/chat/completions')
 @app.post('/api/v1/chat/completions')  # Experimental: Compatibility with OpenAI API
 async def chat_completion(
@@ -1679,127 +1806,18 @@ async def chat_completion(
     if not request.app.state.MODELS:
         await get_all_models(request, user=user)
 
-    model_id = form_data.get('model', None)
-    model_item = form_data.pop('model_item', {})
     tasks = form_data.pop('background_tasks', None)
 
     metadata = {}
     try:
-        model_info = None
-        if not model_item.get('direct', False):
-            if model_id not in request.app.state.MODELS:
-                raise Exception('Model not found')
-
-            model = request.app.state.MODELS[model_id]
-            model_info = await Models.get_model_by_id(model_id)
-
-            # Check if user has access to the model
-            if not BYPASS_MODEL_ACCESS_CONTROL and (user.role != 'admin' or not BYPASS_ADMIN_ACCESS_CONTROL):
-                try:
-                    await check_model_access(user, model)
-                except Exception as e:
-                    raise e
-        else:
-            model = model_item
-
-            request.state.direct = True
-            request.state.model = model
-
-        # Model params: global defaults as base, per-model overrides win
-        default_model_params = getattr(request.app.state.config, 'DEFAULT_MODEL_PARAMS', None) or {}
-        model_info_params = {
-            **default_model_params,
-            **(model_info.params.model_dump() if model_info and model_info.params else {}),
-        }
-
-        # Check base model existence for custom models
-        if model_info and model_info.base_model_id:
-            base_model_id = model_info.base_model_id
-            if base_model_id not in request.app.state.MODELS:
-                if ENABLE_CUSTOM_MODEL_FALLBACK:
-                    default_models = (request.app.state.config.DEFAULT_MODELS or '').split(',')
-
-                    fallback_model_id = default_models[0].strip() if default_models[0] else None
-
-                    if fallback_model_id and fallback_model_id in request.app.state.MODELS:
-                        # Update model and form_data so routing uses the fallback model's type
-                        model = request.app.state.MODELS[fallback_model_id]
-                        form_data['model'] = fallback_model_id
-                    else:
-                        raise Exception('Model not found')
-                else:
-                    raise Exception('Model not found')
-
-        # Chat Params
-        stream_delta_chunk_size = form_data.get('params', {}).get('stream_delta_chunk_size')
-        reasoning_tags = form_data.get('params', {}).get('reasoning_tags')
-
-        # Model Params
-        if model_info_params.get('stream_response') is not None:
-            form_data['stream'] = model_info_params.get('stream_response')
-
-        if model_info_params.get('stream_delta_chunk_size'):
-            stream_delta_chunk_size = model_info_params.get('stream_delta_chunk_size')
-
-        if model_info_params.get('reasoning_tags') is not None:
-            reasoning_tags = model_info_params.get('reasoning_tags')
-
-        # parent_id signals intent:
-        #   null   → new chat (root message, no parent)
-        #   value  → follow-up (user message's parentId = prev assistant)
-        #   absent → legacy caller, no chat management
-        is_new_chat = 'parent_id' in form_data and form_data['parent_id'] is None and not form_data.get('chat_id')
-        parent_id = form_data.pop('parent_id', None)
-        form_data.pop('new_chat', None)  # Legacy field
-
-        # Multi-model: {model_id: assistant_message_id}
-        # Single-model fallback: built from 'model' + 'id'
-        message_ids = form_data.pop('message_ids', None)
-        if not message_ids:
-            message_ids = {model_id: form_data.pop('id', None)}
-        else:
-            form_data.pop('id', None)
-
-        user_message = form_data.pop('user_message', None) or form_data.pop('parent_message', None)
-        metadata = {
-            'user_id': user.id,
-            'chat_id': form_data.pop('chat_id', None),
-            'user_message': user_message,
-            'user_message_id': user_message.get('id') if user_message else None,
-            'assistant_message_id': form_data.pop('assistant_message_id', None),
-            'session_id': form_data.pop('session_id', None),
-            'folder_id': form_data.pop('folder_id', None),
-            'filter_ids': form_data.pop('filter_ids', []),
-            'tool_ids': form_data.get('tool_ids', None),
-            'tool_servers': form_data.pop('tool_servers', None),
-            'files': form_data.get('files', None),
-            'features': form_data.get('features', {}),
-            'variables': form_data.get('variables', {}),
-            'model': model,
-            'direct': model_item.get('direct', False),
-            'params': {
-                'stream_delta_chunk_size': stream_delta_chunk_size,
-                'reasoning_tags': reasoning_tags,
-                'function_calling': (
-                    'native'
-                    if (
-                        form_data.get('params', {}).get('function_calling') == 'native'
-                        or model_info_params.get('function_calling') == 'native'
-                    )
-                    else 'default'
-                ),
-            },
-        }
-
-        if is_new_chat:
-            metadata['chat_id'] = str(uuid4())
+        model, metadata, message_ids = await prepare_chat_request(request, form_data, user)
 
         if metadata.get('chat_id') and user:
             chat_id = metadata['chat_id']
             if not chat_id.startswith('local:') and not chat_id.startswith(
                 'channel:'
             ):  # temporary/channel chats are not stored
-                if is_new_chat:
+                if metadata['is_new_chat']:
                     # Build the full history upfront with ALL assistant placeholders
                     user_message = metadata.get('user_message') or {}
                     user_message_id = user_message.get('id') if user_message else None
@@ -1958,9 +1976,6 @@ async def chat_completion(
                                     'timestamp': int(time.time()),
                                 },
                             )
-
-        request.state.metadata = metadata
-        form_data['metadata'] = metadata
 
     except HTTPException:
         raise
@@ -2202,6 +2217,51 @@ generate_chat_completion = chat_completion
 # Expose as app.state so internal callers (e.g. automations) can
 # use the full pipeline without importing from main.py (avoids circular deps).
 app.state.CHAT_COMPLETION_HANDLER = chat_completion
+
+
+@app.post('/api/chat/completions/preview')
+async def chat_completion_preview(
+    request: Request,
+    form_data: dict,
+    user=Depends(get_admin_user),
+):
+    """Dry-run preview: build the enriched context without calling the LLM or persisting.
+
+    Reuses the same process_chat_payload pipeline as the real send,
+    then returns sanitize_context_for_storage(form_data) — the exact
+    {messages, tools, params} shape stored as enrichedContext.
+    """
+    if not request.app.state.MODELS:
+        await get_all_models(request, user=user)
+
+    # Remove fields that are only used by the real send flow
+    form_data.pop('background_tasks', None)
+    form_data.pop('stream', None)
+    form_data.pop('stream_options', None)
+
+    try:
+        model, metadata, message_ids = await prepare_chat_request(request, form_data, user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.warning(f'Error preparing preview request: {e}')
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    try:
+        form_data, metadata, events = await process_chat_payload(request, form_data, user, metadata, model)
+    except Exception as e:
+        log.error(f'Error processing preview payload: {e}')
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    from open_webui.utils.middleware import sanitize_context_for_storage
+
+    return sanitize_context_for_storage(form_data)
 
 
 ##################################

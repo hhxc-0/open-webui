@@ -3105,7 +3105,7 @@ async def background_tasks_handler(ctx):
     messages = []
 
     if (
-        'chat_id' in metadata
+        metadata.get('chat_id')
         and not metadata['chat_id'].startswith('local:')
         and not metadata['chat_id'].startswith('channel:')
     ):

@@ -80,7 +80,7 @@
 				($user?.permissions?.features?.direct_tool_servers ?? true))) ||
 		(codeInterpreterEnabled && $config?.code?.interpreter_engine !== 'jupyter');
 	$: showOverviewTab = hasMessages;
-	$: showContextTab = $user?.role === 'admin' && hasMessages;
+	$: showContextTab = $user?.role === 'admin';
 
 	// Tab fallback: if active tab becomes hidden, switch to next available
 	$: if (!showOverviewTab && activeTab === 'overview') activeTab = 'controls';
@@ -394,7 +394,7 @@
 							{:else if activeTab === 'files' && codeInterpreterEnabled}
 								<PyodideFileNav />
 							{:else if activeTab === 'context'}
-								<ContextView {history} {prompt} {files} chatParams={params} />
+								<ContextView {history} {prompt} {files} chatParams={params} {modelId} />
 							{:else}
 								<Controls embed={true} {models} bind:chatFiles bind:params />
 							{/if}
@@ -558,7 +558,7 @@
 								{:else if activeTab === 'files' && codeInterpreterEnabled}
 									<PyodideFileNav overlay={dragged} />
 								{:else if activeTab === 'context'}
-									<ContextView {history} {prompt} {files} chatParams={params} />
+									<ContextView {history} {prompt} {files} chatParams={params} {modelId} />
 								{:else}
 									<Controls embed={true} {models} bind:chatFiles bind:params />
 								{/if}

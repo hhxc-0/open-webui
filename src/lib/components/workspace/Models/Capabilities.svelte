@@ -56,6 +56,10 @@
 			description: $i18n.t(
 				'Automatically inject system tools in native function calling mode (e.g., timestamps, memory, chat history, notes, etc.)'
 			)
+		},
+		raw_documents: {
+			label: $i18n.t('Raw Documents'),
+			description: $i18n.t('Model can send files directly to the API without RAG processing')
 		}
 	};
 
@@ -71,6 +75,7 @@
 		citations?: boolean;
 		status_updates?: boolean;
 		builtin_tools?: boolean;
+		raw_documents?: boolean;
 	} = {};
 
 	// Hide file_context when file_upload is disabled

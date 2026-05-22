@@ -822,9 +822,10 @@
 						{@const availableFeatures = Object.entries(capabilities)
 							.filter(
 								([key, value]) =>
-									value && ['web_search', 'code_interpreter', 'image_generation'].includes(key)
+									value && ['web_search', 'code_interpreter', 'image_generation', 'raw_documents'].includes(key)
 							)
-							.map(([key, value]) => key)}
+							.map(([key, value]) => key)
+							.flatMap((key) => key === 'web_search' ? ['web_search', 'native_web_search'] : [key])}
 
 						{#if availableFeatures.length > 0}
 							<div class="my-4">

@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { settings, tools as toolsStore } from '$lib/stores';
+	import { settings } from '$lib/stores';
 	import { createMessagesList } from '$lib/utils';
+	import { previewChatContext } from '$lib/apis/openai';
 	import Collapsible from '$lib/components/common/Collapsible.svelte';
 	const i18n = getContext('i18n');
 
@@ -9,10 +10,13 @@
 	export let prompt = '';
 	export let files = [];
 	export let chatParams = {};
+	export let modelId = null;
 
 	let rawJson = false;
 	let showPreview = false;
 	let previewContext = null;
+	let previewLoading = false;
+	let previewError = null;
 
 	// Find the most recent enriched context from the message history.
 	function findContext(history) {
@@ -37,56 +41,51 @@
 
 	$: capturedContext = findContext(history);
 
-	function buildPreviewContext() {
-		if (!history?.currentId) return null;
+	async function refreshPreview() {
+		previewLoading = true;
+		previewError = null;
+		try {
+			// Build messages from history tree (same as real send)
+			const rawMessages = history?.currentId
+				? createMessagesList(history, history.currentId)
+				: [];
+			const messages = rawMessages
+				.filter((m) => m.role !== 'system')
+				.map((m) => ({
+					role: m.role,
+					content: m.content
+				}));
 
-		// Build message list from history tree
-		const rawMessages = createMessagesList(history, history.currentId);
-		const msgs = rawMessages
-			.filter((m) => m.role !== 'system')
-			.map((m) => ({
-				role: m.role,
-				content: m.content
-			}));
-
-		// Append pending user message
-		if (prompt?.trim()) {
-			const pendingFiles = (files ?? []).filter((f) => f.status === 'processed');
-			const hasImages = pendingFiles.some(
-				(f) => f.type === 'image' || (f?.content_type ?? '').startsWith('image/')
-			);
-
-			if (hasImages) {
-				const content = [{ type: 'text', text: prompt }];
-				for (const f of pendingFiles) {
-					if (f.type === 'image' || (f?.content_type ?? '').startsWith('image/')) {
-						content.push({
-							type: 'image_url',
-							image_url: { url: f.url }
-						});
-					}
-				}
-				msgs.push({ role: 'user', content });
-			} else {
-				msgs.push({ role: 'user', content: prompt });
+			// Append pending user message
+			if (prompt?.trim()) {
+				messages.push({ role: 'user', content: prompt });
 			}
+
+			// Prepend system prompt
+			const sysPrompt = chatParams?.system ?? $settings?.system ?? '';
+			if (sysPrompt) {
+				messages.unshift({ role: 'system', content: sysPrompt });
+			}
+
+			// Send the same payload shape as the real send flow
+			const pendingFiles = (files ?? []).filter((f) => f.status === 'processed');
+			const body = {
+				model: modelId,
+				messages,
+				files: pendingFiles.length > 0 ? pendingFiles : undefined,
+				params: {
+					...($settings?.params ?? {}),
+					...(chatParams ?? {})
+				}
+			};
+
+			previewContext = await previewChatContext(localStorage.token, body);
+			showPreview = true;
+		} catch (err) {
+			previewError = err?.detail ?? err?.message ?? String(err);
+		} finally {
+			previewLoading = false;
 		}
-
-		// Prepend system prompt
-		const sysPrompt = chatParams?.system ?? $settings?.system ?? '';
-		if (sysPrompt) {
-			msgs.unshift({ role: 'system', content: sysPrompt });
-		}
-
-		// Tools from store
-		const tools = $toolsStore && $toolsStore.length > 0 ? $toolsStore : null;
-
-		return { messages: msgs, tools, params: $settings?.params ?? {} };
-	}
-
-	function refreshPreview() {
-		previewContext = buildPreviewContext();
-		showPreview = true;
 	}
 
 	$: context = showPreview ? previewContext : capturedContext;
@@ -126,10 +125,11 @@
 		<div class="flex items-center gap-1">
 			{#if showPreview}
 				<button
-					class="text-xs px-2.5 py-1 rounded-lg transition font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50"
+					class="text-xs px-2.5 py-1 rounded-lg transition font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 disabled:opacity-50"
 					on:click={refreshPreview}
+					disabled={previewLoading}
 				>
-					{$i18n.t('Refresh Preview')}
+					{previewLoading ? $i18n.t('Loading...') : $i18n.t('Refresh Preview')}
 				</button>
 				<button
 					class="text-xs px-2.5 py-1 rounded-lg transition text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -139,10 +139,11 @@
 				</button>
 			{:else}
 				<button
-					class="text-xs px-2.5 py-1 rounded-lg transition font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+					class="text-xs px-2.5 py-1 rounded-lg transition font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
 					on:click={refreshPreview}
+					disabled={previewLoading}
 				>
-					{$i18n.t('Preview Context')}
+					{previewLoading ? $i18n.t('Loading...') : $i18n.t('Preview Context')}
 				</button>
 			{/if}
 		</div>
@@ -155,6 +156,12 @@
 			{rawJson ? $i18n.t('Formatted') : $i18n.t('Raw JSON')}
 		</button>
 	</div>
+
+	{#if previewError}
+		<div class="text-xs text-red-500 dark:text-red-400 px-1 mb-2">
+			{previewError}
+		</div>
+	{/if}
 
 	{#if !context}
 		<div class="text-center text-gray-500 dark:text-gray-400 py-8 px-2">

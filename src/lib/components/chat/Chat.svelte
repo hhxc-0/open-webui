@@ -216,6 +216,8 @@
 		selectedFilterIds = [];
 		webSearchMode = '';
 		imageGenerationEnabled = false;
+		codeInterpreterEnabled = false;
+		rawDocumentsEnabled = false;
 
 		const storageChatInput = sessionStorage.getItem(
 			`chat-input${chatIdProp ? `-${chatIdProp}` : ''}`
@@ -395,7 +397,13 @@
 					$config?.features?.enable_web_search &&
 					($user?.role === 'admin' || $user?.permissions?.features?.web_search)
 				) {
-					webSearchMode = model.info.meta.defaultFeatureIds.includes('web_search') ? 'external' : '';
+					if (model.info.meta.defaultFeatureIds.includes('native_web_search')) {
+						webSearchMode = 'native';
+					} else if (model.info.meta.defaultFeatureIds.includes('web_search')) {
+						webSearchMode = 'external';
+					} else {
+						webSearchMode = '';
+					}
 				}
 
 				if (
@@ -404,6 +412,10 @@
 					($user?.role === 'admin' || $user?.permissions?.features?.code_interpreter)
 				) {
 					codeInterpreterEnabled = model.info.meta.defaultFeatureIds.includes('code_interpreter');
+				}
+
+				if (model.info?.meta?.capabilities?.['raw_documents']) {
+					rawDocumentsEnabled = model.info.meta.defaultFeatureIds.includes('raw_documents');
 				}
 			}
 

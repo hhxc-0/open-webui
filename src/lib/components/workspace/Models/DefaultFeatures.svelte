@@ -8,8 +8,12 @@
 
 	const featureLabels = {
 		web_search: {
-			label: $i18n.t('Web Search'),
-			description: $i18n.t('Model can search the web for information')
+			label: $i18n.t('Web Search (External)'),
+			description: $i18n.t('Enable RAG-based web search by default')
+		},
+		native_web_search: {
+			label: $i18n.t('Web Search (Native)'),
+			description: $i18n.t('Enable provider-native web search by default')
 		},
 		image_generation: {
 			label: $i18n.t('Image Generation'),
@@ -18,10 +22,14 @@
 		code_interpreter: {
 			label: $i18n.t('Code Interpreter'),
 			description: $i18n.t('Model can execute code and perform calculations')
+		},
+		raw_documents: {
+			label: $i18n.t('Raw Documents'),
+			description: $i18n.t('Send files directly to the API without RAG processing by default')
 		}
 	};
 
-	export let availableFeatures = ['web_search', 'image_generation', 'code_interpreter'];
+	export let availableFeatures = ['web_search', 'native_web_search', 'image_generation', 'code_interpreter', 'raw_documents'];
 	export let featureIds = [];
 </script>
 
