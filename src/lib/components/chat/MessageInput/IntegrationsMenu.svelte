@@ -13,7 +13,7 @@
 		terminalServers
 	} from '$lib/stores';
 
-	import { getOAuthClientAuthorizationUrl } from '$lib/apis/configs';
+	import { initiateOAuthRedirect } from '$lib/apis/configs';
 	import { deleteOAuthSession } from '$lib/apis/auths';
 	import { getTools } from '$lib/apis/tools';
 	import { getSkills } from '$lib/apis/skills';
@@ -61,6 +61,7 @@
 
 	export let onShowValves: Function;
 	export let onClose: Function;
+	export let onWebSearchToggle: Function = () => {};
 	export let closeOnOutsideClick = true;
 
 	let show = false;
@@ -287,6 +288,7 @@
 												: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}"
 										on:click={() => {
 											webSearchMode = mode;
+											onWebSearchToggle(mode);
 										}}
 									>
 										{label}
@@ -300,6 +302,10 @@
 						<Tooltip content={$i18n.t('Generate an image')} placement="top-start">
 							<button
 								class="flex w-full justify-between gap-2 items-center px-3 py-1.5 text-sm cursor-pointer rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50"
+								aria-pressed={imageGenerationEnabled}
+								aria-label={imageGenerationEnabled
+									? $i18n.t('Disable Image Generation')
+									: $i18n.t('Enable Image Generation')}
 								on:click={() => {
 									imageGenerationEnabled = !imageGenerationEnabled;
 								}}
@@ -438,14 +444,13 @@
 								if (!(tools[toolId]?.authenticated ?? true)) {
 									e.preventDefault();
 
-									let parts = toolId.split(':');
-									let serverId = parts?.at(-1) ?? toolId;
-
-									// Persist the tool ID so we can re-enable it after OAuth redirect
-									sessionStorage.setItem('pendingOAuthToolId', toolId);
-
-									const authUrl = getOAuthClientAuthorizationUrl(serverId, 'mcp');
-									window.open(authUrl, '_self', 'noopener');
+									const parts = toolId.split(':');
+									initiateOAuthRedirect({
+										id: toolId,
+										serverId: parts.at(-1) ?? toolId,
+										authType:
+											parts.length > 1 ? (parts[0] === 'server' ? parts[1] : parts[0]) : null
+									});
 								} else {
 									tools[toolId].enabled = !tools[toolId].enabled;
 
