@@ -404,7 +404,7 @@
 							<div class="truncate">{$i18n.t('Thinking Effort')}</div>
 						</div>
 						<div class="flex gap-1">
-							{#each [[null, $i18n.t('Off')], ['low', $i18n.t('Low')], ['medium', $i18n.t('Medium')], ['high', $i18n.t('High')], ['xhigh', 'xhigh']] as [level, label]}
+							{#each [[null, $i18n.t('Default')], ['none', $i18n.t('None')], ['low', $i18n.t('Low')], ['medium', $i18n.t('Medium')], ['high', $i18n.t('High')], ['xhigh', 'xhigh'], ['max', $i18n.t('Max')], ['ultra', $i18n.t('Ultra')]] as [level, label]}
 								<button
 									class="flex-1 py-0.5 text-xs rounded-lg transition-colors
 										{(thinkingEffort ?? null) === level

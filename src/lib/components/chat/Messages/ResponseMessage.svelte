@@ -44,6 +44,7 @@
 	import Skeleton from './Skeleton.svelte';
 	import Image from '$lib/components/common/Image.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
+	import Language from '$lib/components/icons/Language.svelte';
 	import RateComment from './RateComment.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import WebSearchResults from './ResponseMessage/WebSearchResults.svelte';
@@ -65,6 +66,7 @@
 	import FullHeightIframe from '$lib/components/common/FullHeightIframe.svelte';
 	import OutputEditView from './OutputEditView.svelte';
 	import { getOutputText, replaceOutputMessageText, type OutputItem } from './structuredOutput';
+	import Translation from './Translation.svelte';
 
 	interface MessageType {
 		id: string;
@@ -203,6 +205,8 @@
 	let speakAbort: AbortController | null = null;
 
 	let showRateComment = false;
+	let translation;
+	let translationLoading = false;
 
 	const copyToClipboard = async (text) => {
 		text = removeAllDetails(text);
@@ -874,6 +878,15 @@
 									}}
 								/>
 							{/if}
+							{#if message.done}
+								<Translation
+									bind:this={translation}
+									bind:loading={translationLoading}
+									content={visibleResponseContent}
+									model={message.model}
+									messageId={message.id}
+								/>
+							{/if}
 
 							{#if message?.error}
 								<Error content={message?.error?.content ?? message.content} />
@@ -1072,6 +1085,19 @@
 												d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
 											/>
 										</svg>
+									</button>
+								</Tooltip>
+								<Tooltip content={$i18n.t('Translate')} placement="bottom">
+									<button
+										type="button"
+										aria-label={$i18n.t('Translate')}
+										disabled={translationLoading}
+										class="{isLastMessage || ($settings?.highContrastMode ?? false)
+											? 'visible'
+											: 'invisible group-hover:visible'} p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg dark:hover:text-white hover:text-black transition disabled:opacity-50"
+										on:click={() => translation?.translate()}
+									>
+										<Language className="w-4 h-4" />
 									</button>
 								</Tooltip>
 

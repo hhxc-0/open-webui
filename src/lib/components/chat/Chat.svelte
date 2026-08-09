@@ -317,7 +317,7 @@
 	let webSearchMode: '' | 'external' | 'native' = '';
 	let codeInterpreterEnabled = false;
 	let rawDocumentsEnabled = false;
-	let thinkingEffort: null | 'low' | 'medium' | 'high' | 'xhigh' = null;
+	let thinkingEffort: null | 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'ultra' = null;
 	let webSearchActive = false;
 	let showWebSearchConfirm = false;
 	let pendingWebSearchPrompt: string | null = null;

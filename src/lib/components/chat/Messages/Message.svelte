@@ -66,6 +66,7 @@
 				{chatId}
 				{history}
 				{messageId}
+				{selectedModels}
 				isFirstMessage={idx === 0}
 				siblings={history.messages[messageId].parentId !== null
 					? (history.messages[history.messages[messageId].parentId]?.childrenIds ?? [])

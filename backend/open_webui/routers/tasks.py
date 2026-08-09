@@ -624,6 +624,88 @@ async def generate_emoji(request: Request, form_data: dict, user=Depends(get_ver
         )
 
 
+@router.post('/translation/completions')
+async def generate_translation(request: Request, form_data: dict, user=Depends(get_verified_user)):
+    content = form_data.get('content', '').strip()
+    target_language = form_data.get('target_language')
+
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=ERROR_MESSAGES.EMPTY_CONTENT,
+        )
+    if target_language not in ('English', 'Chinese'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Translation target must be English or Chinese.',
+        )
+
+    if getattr(request.state, 'direct', False) and hasattr(request.state, 'model'):
+        models = {
+            **request.app.state.MODELS,
+            request.state.model['id']: request.state.model,
+        }
+    else:
+        models = request.app.state.MODELS
+
+    model_id = form_data.get('model')
+    if not model_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='No model specified for translation.',
+        )
+    if model_id not in models:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
+        )
+
+    task_model_id = get_task_model_id(
+        model_id,
+        await Config.get('task.model.default'),
+        await Config.get('task.model.external'),
+        models,
+    )
+
+    max_tokens = models[task_model_id].get('info', {}).get('params', {}).get('max_tokens', 2048)
+    payload = {
+        'model': task_model_id,
+        'messages': [
+            {
+                'role': 'system',
+                'content': (
+                    f'Translate the user text into {target_language}. Preserve its meaning, tone, '
+                    'formatting, code, and proper nouns. Return only the translation.'
+                ),
+            },
+            {'role': 'user', 'content': content},
+        ],
+        'stream': False,
+        **(
+            {'max_tokens': max_tokens}
+            if models[task_model_id].get('owned_by') == 'ollama'
+            else {'max_completion_tokens': max_tokens}
+        ),
+        # Deliberately omit the source text and chat ID from task metadata. The
+        # resulting translation is returned to the browser only and is not part
+        # of the persisted conversation.
+        'metadata': {
+            **(request.state.metadata if hasattr(request.state, 'metadata') else {}),
+            'task': str(TASKS.TRANSLATION_GENERATION),
+            'target_language': target_language,
+        },
+    }
+
+    try:
+        payload = await process_pipeline_inlet_filter(request, payload, user, models)
+        return await generate_chat_completion(request, form_data=payload, user=user)
+    except Exception:
+        log.error('Error generating translation', exc_info=True)
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={'detail': 'An internal error has occurred.'},
+        )
+
 @router.post('/moa/completions')
 async def generate_moa_response(request: Request, form_data: dict, user=Depends(get_verified_user)):
     if getattr(request.state, 'direct', False) and hasattr(request.state, 'model'):

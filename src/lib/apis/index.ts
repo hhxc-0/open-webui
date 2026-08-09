@@ -828,6 +828,44 @@ export const generateTitle = async (
 	}
 };
 
+export const generateTranslation = async (
+	token: string = '',
+	model: string,
+	content: string,
+	targetLanguage: 'English' | 'Chinese'
+) => {
+	let error = null;
+
+	const res = await fetch(`${WEBUI_BASE_URL}/api/v1/tasks/translation/completions`, {
+		method: 'POST',
+		headers: {
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		},
+		body: JSON.stringify({
+			model,
+			content,
+			target_language: targetLanguage
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
+			error = err?.detail ?? err;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res?.choices?.[0]?.message?.content?.trim() ?? '';
+};
+
 export const generateTags = async (
 	token: string = '',
 	model: string,
