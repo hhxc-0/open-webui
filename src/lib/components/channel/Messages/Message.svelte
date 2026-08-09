@@ -549,7 +549,7 @@
 										allowEmbeds={!!message?.meta?.model_id}
 									/>
 								</span>{#if message.created_at !== message.updated_at && (message?.meta?.model_id ?? null) === null}<span
-										class="text-gray-500 text-[10px] pl-1 self-center">({$i18n.t('edited')})</span
+										class="text-gray-500 text-[0.625rem] pl-1 self-center">({$i18n.t('edited')})</span
 									>{/if}
 							{/if}
 						</div>

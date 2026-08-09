@@ -712,7 +712,7 @@ html.high-contrast.dark .ProseMirror p.is-editor-empty:first-child::before {
 	position: absolute;
 	top: -1.05em;
 	left: -1px;
-	font-size: 13px;
+	font-size: 0.8125rem;
 	background-color: rgb(250, 129, 0);
 	user-select: none;
 	color: white;
@@ -751,7 +751,7 @@ body {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 12px;
+	font-size: 0.75rem;
 	line-height: 1;
 	border-radius: 4px;
 	cursor: grab;

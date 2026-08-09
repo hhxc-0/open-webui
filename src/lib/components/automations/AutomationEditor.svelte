@@ -254,7 +254,7 @@
 <div class="h-full overflow-y-auto scrollbar-hidden">
 	<div class="pb-1 px-1">
 		<div class="flex h-7 items-center px-3">
-			<span class="w-24 shrink-0 text-[11px] text-gray-400 dark:text-gray-500">
+			<span class="w-24 shrink-0 text-[0.6875rem] text-gray-400 dark:text-gray-500">
 				{$i18n.t('Status')}
 			</span>
 			<span
@@ -270,7 +270,7 @@
 		</div>
 
 		<div class="flex h-7 items-center px-3">
-			<span class="w-24 shrink-0 text-[11px] text-gray-400 dark:text-gray-500">
+			<span class="w-24 shrink-0 text-[0.6875rem] text-gray-400 dark:text-gray-500">
 				{$i18n.t('Schedule')}
 			</span>
 			<span class="min-w-0 truncate text-xs text-gray-700 dark:text-gray-300">
@@ -279,7 +279,7 @@
 		</div>
 
 		<div class="flex h-7 items-center px-3">
-			<span class="w-24 shrink-0 text-[11px] text-gray-400 dark:text-gray-500">
+			<span class="w-24 shrink-0 text-[0.6875rem] text-gray-400 dark:text-gray-500">
 				{$i18n.t('Folder')}
 			</span>
 			<span class="min-w-0 truncate text-xs text-gray-700 dark:text-gray-300">
@@ -288,7 +288,7 @@
 		</div>
 
 		<div class="flex h-7 items-center px-3">
-			<span class="w-24 shrink-0 text-[11px] text-gray-400 dark:text-gray-500">
+			<span class="w-24 shrink-0 text-[0.6875rem] text-gray-400 dark:text-gray-500">
 				{$i18n.t('Model')}
 			</span>
 			<span class="min-w-0 truncate text-xs text-gray-700 dark:text-gray-300">
@@ -297,7 +297,7 @@
 		</div>
 
 		<div class="flex h-7 items-center px-3">
-			<span class="w-24 shrink-0 text-[11px] text-gray-400 dark:text-gray-500">
+			<span class="w-24 shrink-0 text-[0.6875rem] text-gray-400 dark:text-gray-500">
 				{$i18n.t('Next run')}
 			</span>
 			<span class="min-w-0 truncate text-xs text-gray-700 dark:text-gray-300">
@@ -306,7 +306,7 @@
 		</div>
 
 		<div class="flex h-7 items-center px-3">
-			<span class="w-24 shrink-0 text-[11px] text-gray-400 dark:text-gray-500">
+			<span class="w-24 shrink-0 text-[0.6875rem] text-gray-400 dark:text-gray-500">
 				{$i18n.t('Last run')}
 			</span>
 			<span class="min-w-0 truncate text-xs text-gray-700 dark:text-gray-300">
@@ -318,7 +318,7 @@
 	<hr class="my-1.5 border-gray-50/60 dark:border-gray-850/25" />
 
 	<div class="px-4 py-2">
-		<div class="mb-2 text-[11px] text-gray-400 dark:text-gray-500">{$i18n.t('Prompt')}</div>
+		<div class="mb-2 text-[0.6875rem] text-gray-400 dark:text-gray-500">{$i18n.t('Prompt')}</div>
 		<div
 			class="whitespace-pre-wrap font-mono text-xs leading-relaxed text-gray-700 dark:text-gray-300"
 		>
@@ -329,14 +329,14 @@
 	<hr class="my-1.5 border-gray-50/60 dark:border-gray-850/25" />
 
 	<div class="px-4 py-2">
-		<div class="mb-1 text-[11px] text-gray-400 dark:text-gray-500">{$i18n.t('Runs')}</div>
+		<div class="mb-1 text-[0.6875rem] text-gray-400 dark:text-gray-500">{$i18n.t('Runs')}</div>
 		<div class="overflow-y-auto scrollbar-hidden" on:scroll={onScroll}>
 			{#if runsLoading && runs.length === 0}
 				<div class="flex justify-center py-8">
 					<Spinner className="size-4" />
 				</div>
 			{:else if runs.length === 0}
-				<div class="py-2 text-[11px] text-gray-400 dark:text-gray-600">
+				<div class="py-2 text-[0.6875rem] text-gray-400 dark:text-gray-600">
 					{$i18n.t('No runs yet')}
 				</div>
 			{:else}

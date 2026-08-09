@@ -140,7 +140,7 @@
 							<div class="line-clamp-1 text-xs">
 								{file?.name ?? file?.meta?.name}
 								{#if file?.meta?.size}
-									<span class="text-[11px] text-gray-500">{formatFileSize(file?.meta?.size)}</span>
+									<span class="text-[0.6875rem] text-gray-500">{formatFileSize(file?.meta?.size)}</span>
 								{/if}
 							</div>
 						{/if}

@@ -17,7 +17,7 @@
 		on:click|stopPropagation={() => dispatch('click', event)}
 	>
 		<span
-			class="shrink-0 size-[7px] rounded-full mt-[5px]"
+			class="shrink-0 size-[0.4375rem] rounded-full mt-[0.3125rem]"
 			style="background-color: {event.color || calendarColor || '#3b82f6'};"
 		></span>
 		<span class="truncate">

@@ -478,7 +478,7 @@
 	<DragGhost {x} {y}>
 		<div class=" bg-black/80 backdrop-blur-2xl px-2 py-1 rounded-lg w-fit max-w-40">
 			<div class="flex items-center gap-1">
-				<ChatIcon className=" size-[18px]" strokeWidth="1.5" />
+				<ChatIcon className=" size-[1.125rem]" strokeWidth="1.5" />
 				<div class=" text-xs text-white line-clamp-1">
 					{title}
 				</div>
@@ -620,7 +620,7 @@
 
 				<!-- Time ago indicator -->
 				{#if (updatedAt ?? createdAt) && !showInlineActions}
-					<div class="shrink-0 self-center text-[10px] text-gray-400 dark:text-gray-500 pl-2">
+					<div class="shrink-0 self-center text-[0.625rem] text-gray-400 dark:text-gray-500 pl-2">
 						{formatTimeAgo((updatedAt ?? createdAt) as number)}
 					</div>
 				{/if}

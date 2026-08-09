@@ -593,7 +593,7 @@
 													<Tooltip content={note.title} className="min-w-0" placement="top-start">
 														<div
 															dir="auto"
-															class="h-[20px] truncate text-[13px] leading-5 text-gray-800 group-hover:underline dark:text-gray-200"
+															class="h-[20px] truncate text-[0.8125rem] leading-5 text-gray-800 group-hover:underline dark:text-gray-200"
 														>
 															{note.title}
 														</div>
@@ -601,7 +601,7 @@
 
 													<Tooltip content={dayjs(note.updated_at / 1000000).format('LLLL')}>
 														<div
-															class="shrink-0 truncate text-[11px] leading-5 text-gray-400 dark:text-gray-600"
+															class="shrink-0 truncate text-[0.6875rem] leading-5 text-gray-400 dark:text-gray-600"
 														>
 															{dayjs(note.updated_at / 1000000).fromNow()}
 														</div>
@@ -610,7 +610,7 @@
 
 												<div class="ml-2 flex shrink-0 items-center justify-end gap-2">
 													<div
-														class="hidden max-w-44 shrink-0 truncate text-right text-[11px] leading-5 text-gray-500 dark:text-gray-500 md:block"
+														class="hidden max-w-44 shrink-0 truncate text-right text-[0.6875rem] leading-5 text-gray-500 dark:text-gray-500 md:block"
 													>
 														<Tooltip
 															content={note?.user?.email ?? $i18n.t('Deleted User')}
@@ -689,7 +689,7 @@
 													<a href={`/notes/${note.id}`} class="min-w-0 flex-1">
 														<Tooltip content={note.title} placement="top-start">
 															<div
-																class="truncate text-[13px] leading-5 text-gray-800 group-hover:underline dark:text-gray-200"
+																class="truncate text-[0.8125rem] leading-5 text-gray-800 group-hover:underline dark:text-gray-200"
 															>
 																{note.title}
 															</div>
@@ -747,7 +747,7 @@
 													</div>
 
 													<div
-														class="mt-auto flex w-full items-center justify-between gap-2 pt-3 text-[11px] leading-4 text-gray-500 dark:text-gray-500"
+														class="mt-auto flex w-full items-center justify-between gap-2 pt-3 text-[0.6875rem] leading-4 text-gray-500 dark:text-gray-500"
 													>
 														<Tooltip
 															content={note?.user?.email ?? $i18n.t('Deleted User')}
