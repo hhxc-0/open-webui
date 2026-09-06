@@ -336,6 +336,9 @@
 </script>
 
 <svelte:head>
+	<!-- LICENSE covers this Open WebUI browser-title identifier.
+	Do not alter, remove, obscure, or replace it except as LICENSE permits:
+	https://docs.openwebui.com/license. -->
 	<title>
 		{$i18n.t('Notes')} / {$WEBUI_NAME}
 	</title>
@@ -584,7 +587,7 @@
 											<button
 												type="button"
 												aria-label={$i18n.t('Open note')}
-												class="group flex min-h-8 w-full items-center gap-2 rounded-xl px-2 py-[6px] text-left transition hover:bg-gray-50 focus-within:bg-gray-50 dark:hover:bg-gray-900 dark:focus-within:bg-gray-900"
+												class="group flex min-h-8 w-full items-center gap-2 rounded-xl px-2 py-[0.375rem] text-left transition hover:bg-gray-50 focus-within:bg-gray-50 dark:hover:bg-gray-900 dark:focus-within:bg-gray-900"
 												on:click={() => {
 													goto(`/notes/${note.id}`);
 												}}
@@ -593,7 +596,7 @@
 													<Tooltip content={note.title} className="min-w-0" placement="top-start">
 														<div
 															dir="auto"
-															class="h-[20px] truncate text-[0.8125rem] leading-5 text-gray-800 group-hover:underline dark:text-gray-200"
+															class="h-[1.25rem] truncate text-[0.8125rem] leading-5 text-gray-800 group-hover:underline dark:text-gray-200"
 														>
 															{note.title}
 														</div>

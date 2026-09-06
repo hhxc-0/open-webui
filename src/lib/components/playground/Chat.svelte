@@ -395,7 +395,7 @@
 					</button>
 
 					<div slot="content">
-						<DropdownMenu className="min-w-[200px]">
+						<DropdownMenu className="min-w-[12.5rem]">
 							<DropdownSub contentClass="select-none z-50">
 								<button
 									slot="trigger"

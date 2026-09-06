@@ -290,7 +290,7 @@
 	<slot />
 
 	<div slot="content">
-		<DropdownMenu className="select-none min-w-[200px] max-w-[200px] transition">
+		<DropdownMenu className="select-none min-w-[12.5rem] max-w-[12.5rem] transition">
 			<!-- <DropdownMenu.Item draggable="false"
 				class="flex gap-2 items-center h-[1.6875rem] px-2 text-[0.8125rem] font-normal  cursor-pointer dark:hover:bg-gray-800 rounded-xl"
 				on:click={async () => {
@@ -487,16 +487,18 @@
 					<div class="flex items-center">{$i18n.t('Archive')}</div>
 				</button>
 
-				<button
-					draggable="false"
-					class="flex h-[1.6875rem] w-full items-center gap-2 rounded-xl px-2 text-[0.8125rem] cursor-pointer select-none hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
-					on:click={() => {
-						deleteChatHandler();
-					}}
-				>
-					<GarbageBin className="size-3.5" strokeWidth="1.5" />
-					<div class="flex items-center">{$i18n.t('Delete')}</div>
-				</button>
+				{#if $user?.role === 'admin' || ($user?.permissions?.chat?.delete ?? true)}
+					<button
+						draggable="false"
+						class="flex h-[1.6875rem] w-full items-center gap-2 rounded-xl px-2 text-[0.8125rem] cursor-pointer select-none hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+						on:click={() => {
+							deleteChatHandler();
+						}}
+					>
+						<GarbageBin className="size-3.5" strokeWidth="1.5" />
+						<div class="flex items-center">{$i18n.t('Delete')}</div>
+					</button>
+				{/if}
 
 				<hr class="border-gray-50/30 dark:border-gray-800/30 mx-1 my-0.5" />
 

@@ -88,8 +88,9 @@
 			: period === 'year' || period === 'all'
 				? 'M/D/YY'
 				: 'M/D'}
-		<div class="absolute inset-x-0 bottom-0 flex justify-between px-0.5 text-[0.625rem] text-gray-400">
-			{#each Array(labelCount) as _, i}
+		<div
+			class="absolute inset-x-0 bottom-0 flex justify-between px-0.5 text-[0.625rem] text-gray-400"
+		>			{#each Array(labelCount) as _, i}
 				{@const idx = i === labelCount - 1 ? data.length - 1 : Math.min(i * step, data.length - 1)}
 				{#if data[idx]}
 					<span class={i === 0 ? 'text-left' : i === labelCount - 1 ? 'text-right' : 'text-center'}
@@ -106,7 +107,7 @@
 			style="left:{Math.min(Math.max((mouseX / w) * 100, 8), 92)}%"
 		>
 			<div
-				class="min-w-[140px] -translate-x-1/2 rounded border border-gray-100 bg-white px-2.5 py-1.5 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+				class="min-w-[8.75rem] -translate-x-1/2 rounded border border-gray-100 bg-white px-2.5 py-1.5 shadow-sm dark:border-gray-800 dark:bg-gray-900"
 			>
 				<div class="mb-1.5 text-[0.625rem] text-gray-400">
 					{#if hovered.date?.includes(':')}

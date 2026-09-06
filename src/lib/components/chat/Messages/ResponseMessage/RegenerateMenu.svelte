@@ -28,7 +28,7 @@
 	<slot></slot>
 
 	<div slot="content">
-		<DropdownMenu className="max-w-[200px] transition">
+		<DropdownMenu className="max-w-[12.5rem] transition">
 			<div class="py-1 px-2 flex dark:text-gray-100">
 				<input
 					type="text"

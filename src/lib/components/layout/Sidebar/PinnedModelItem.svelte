@@ -29,7 +29,7 @@
 		}}
 	>
 		<a
-			class="grow flex items-center space-x-2 rounded-xl px-2 py-[7px] group-hover:bg-gray-100 dark:group-hover:bg-gray-900 transition"
+			class="grow flex items-center space-x-2 rounded-xl px-2 py-[0.4375rem] group-hover:bg-gray-100 dark:group-hover:bg-gray-900 transition"
 			href="/?model={model?.id}"
 			on:click={onClick}
 			draggable="false"
@@ -40,6 +40,9 @@
 					class=" size-4 rounded-full"
 					alt="logo"
 					on:error={(e) => {
+						// LICENSE covers this Open WebUI fallback logo.
+						// Do not alter, remove, obscure, or replace it except as LICENSE permits:
+						// https://docs.openwebui.com/license.
 						e.currentTarget.src = '/favicon.png';
 					}}
 				/>

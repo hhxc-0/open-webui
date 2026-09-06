@@ -16,7 +16,7 @@
 	const i18n = getContext('i18n');
 
 	export let show = false;
-	export let className = 'max-w-[180px]';
+	export let className = 'max-w-[11.25rem]';
 
 	export let onDownload = (type) => {};
 	export let onDelete = () => {};
@@ -41,7 +41,7 @@
 	<slot />
 
 	<div slot="content">
-		<DropdownMenu className="min-w-[180px]">
+		<DropdownMenu className="min-w-[11.25rem]">
 			<DropdownSub contentClass="select-none z-50">
 				<button
 					slot="trigger"

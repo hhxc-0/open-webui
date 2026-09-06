@@ -31,7 +31,10 @@
 			const startDate = new Date(startMs);
 			const endDate = new Date(endMs);
 			const d = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-			const last = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()).getTime();
+			const last = Math.max(
+				d.getTime(),
+				new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()).getTime()
+			);
 			while (d.getTime() <= last) {
 				const key = d.getTime().toString();
 				(map[key] ??= []).push(e);
@@ -90,7 +93,7 @@
 		const dayEndMs = dayStartMs + 86_400_000;
 		return filteredEvents.filter((e) => {
 			const startMs = e.start_at / NS;
-			const endMs = (e.end_at || e.start_at) / NS;
+			const endMs = Math.max(startMs, (e.end_at || e.start_at) / NS);
 			return startMs < dayEndMs && endMs >= dayStartMs;
 		});
 	}
@@ -207,7 +210,7 @@
 				class="flex-1 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100/30 dark:border-gray-850/30 overflow-hidden relative"
 			>
 				<div class="absolute inset-0 overflow-x-auto flex flex-col">
-					<div class="min-w-[700px] flex flex-col flex-1">
+					<div class="min-w-[43.75rem] flex flex-col flex-1">
 						<div
 							class="grid grid-cols-[52px_repeat(7,1fr)] shrink-0 border-b border-gray-100/30 dark:border-gray-850/30"
 						>
@@ -237,7 +240,7 @@
 						<div class="flex-1 overflow-y-auto">
 							{#each hours as hour}
 								<div
-									class="grid grid-cols-[52px_repeat(7,1fr)] min-h-[52px] {hour > 0
+									class="grid grid-cols-[52px_repeat(7,1fr)] min-h-[3.25rem] {hour > 0
 										? 'border-t border-gray-100/15 dark:border-gray-850/15'
 										: ''}"
 								>
@@ -291,7 +294,7 @@
 				{#each hours as hour}
 					{@const hourEvents = getEventsForHour(currentDate, hour, filteredEvents)}
 					<div
-						class="flex min-h-[52px] {hour > 0
+						class="flex min-h-[3.25rem] {hour > 0
 							? 'border-t border-gray-100/15 dark:border-gray-850/15'
 							: ''}"
 					>

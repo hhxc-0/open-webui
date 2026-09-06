@@ -125,6 +125,9 @@
 	};
 
 	const shareHandler = async () => {
+		// LICENSE covers this Open WebUI Community wordmark.
+		// Do not alter, remove, obscure, or replace it except as LICENSE permits:
+		// https://docs.openwebui.com/license.
 		toast.success($i18n.t('Redirecting you to Open WebUI Community'));
 
 		// remove snapshot from feedbacks
@@ -276,7 +279,7 @@
 						</button>
 
 						<div slot="content">
-							<DropdownMenu className="w-[170px]">
+							<DropdownMenu className="w-[10.625rem]">
 								<button
 									class="select-none flex w-full gap-2 items-center h-[1.6875rem] px-2 text-[0.8125rem] font-normal cursor-pointer hover:bg-gray-50/40 dark:hover:bg-gray-800/40 rounded-xl"
 									type="button"
@@ -301,11 +304,10 @@
 
 		<div class="scrollbar-hidden relative whitespace-nowrap overflow-x-auto max-w-full">
 			{#if (items ?? []).length === 0}
-				<div class="w-full h-full flex flex-col justify-center items-center my-16 mb-24">
-					<div class="max-w-md text-center">
-						<div class="text-3xl mb-3">😕</div>
-						<div class="text-lg font-normal mb-1">{$i18n.t('No feedback found')}</div>
-						<div class="text-gray-500 text-center text-xs">
+				<div class="flex w-full flex-col items-center justify-center py-16 pb-24">
+					<div class="max-w-sm text-center text-gray-900 dark:text-gray-100">
+						<div class="mb-1.5 text-sm">{$i18n.t('No feedback found')}</div>
+						<div class="text-center text-xs leading-5 text-gray-500">
 							{$i18n.t('Try adjusting your search or filter to find what you are looking for.')}
 						</div>
 					</div>

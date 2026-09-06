@@ -45,7 +45,7 @@
 	</Tooltip>
 
 	<div slot="content">
-		<DropdownMenu className="min-w-[180px]">
+		<DropdownMenu className="min-w-[11.25rem]">
 			{#if ['filter', 'action'].includes(func.type)}
 				<div
 					class="flex gap-2 justify-between items-center h-[1.6875rem] px-2 text-[0.8125rem] font-normal cursor-pointer rounded-xl"

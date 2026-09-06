@@ -50,7 +50,7 @@
 	</Tooltip>
 
 	<div slot="content">
-		<DropdownMenu className="min-w-[170px]">
+		<DropdownMenu className="min-w-[10.625rem]">
 			{#if isProduction}
 				<Tooltip content={$i18n.t('Cannot delete the production version')} placement="top">
 					<div

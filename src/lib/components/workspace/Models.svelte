@@ -17,9 +17,11 @@
 		config,
 		mobile,
 		models as _models,
+		pinnedModels,
 		settings,
 		user,
-		workspaceActions
+		workspaceActions,
+		workspaceCounts
 	} from '$lib/stores';
 	import { WEBUI_API_BASE_URL } from '$lib/constants';
 	import {
@@ -164,6 +166,7 @@
 			if (res) {
 				models = res.items;
 				total = res.total;
+				workspaceCounts.update((counts) => ({ ...counts, models: total }));
 
 				// get tags
 				tags = await getModelTags(localStorage.token).catch((error) => {
@@ -211,6 +214,9 @@
 	};
 
 	const shareModelHandler = async (model) => {
+		// LICENSE covers this Open WebUI Community wordmark.
+		// Do not alter, remove, obscure, or replace it except as LICENSE permits:
+		// https://docs.openwebui.com/license.
 		toast.success($i18n.t('Redirecting you to Open WebUI Community'));
 
 		const url = 'https://openwebui.com';
@@ -289,15 +295,12 @@
 	};
 
 	const pinModelHandler = async (modelId) => {
-		let pinnedModels = $settings?.pinnedModels ?? [];
-
-		if (pinnedModels.includes(modelId)) {
-			pinnedModels = pinnedModels.filter((id) => id !== modelId);
-		} else {
-			pinnedModels = [...new Set([...pinnedModels, modelId])];
-		}
-
-		settings.set({ ...$settings, pinnedModels: pinnedModels });
+		settings.set({
+			...$settings,
+			pinnedModels: $pinnedModels.includes(modelId)
+				? $pinnedModels.filter((id) => id !== modelId)
+				: [...$pinnedModels, modelId]
+		});
 		await updateUserSettings(localStorage.token, { ui: $settings });
 	};
 
@@ -432,6 +435,9 @@
 </script>
 
 <svelte:head>
+	<!-- LICENSE covers this Open WebUI browser-title identifier.
+	Do not alter, remove, obscure, or replace it except as LICENSE permits:
+	https://docs.openwebui.com/license. -->
 	<title>
 		{$i18n.t('Models')} / {$WEBUI_NAME}
 	</title>
@@ -560,6 +566,7 @@
 						align="end"
 						onChange={async (value) => {
 							localStorage.workspaceViewOption = value;
+							page = 1;
 							await tick();
 						}}
 					/>
@@ -571,6 +578,10 @@
 							items={tags.map((tag) => {
 								return { value: tag, label: tag };
 							})}
+							onChange={async () => {
+								page = 1;
+								await tick();
+							}}
 						/>
 					{/if}
 				</div>
@@ -587,7 +598,7 @@
 					</Tooltip>
 
 					<div slot="content">
-						<DropdownMenu className="w-[170px] shadow-sm">
+						<DropdownMenu className="w-[10.625rem] shadow-sm">
 							<button
 								class="flex h-[1.6875rem] w-full cursor-pointer select-none items-center gap-2 rounded-xl bg-transparent px-2 text-[0.8125rem] hover:text-gray-900 dark:hover:text-gray-100"
 								type="button"
@@ -708,6 +719,9 @@
 											loading="lazy"
 											decoding="async"
 											on:error={(e) => {
+												// LICENSE covers this Open WebUI fallback logo.
+												// Do not alter, remove, obscure, or replace it except as LICENSE permits:
+												// https://docs.openwebui.com/license.
 												e.target.src = '/favicon.png';
 											}}
 										/>
@@ -721,14 +735,14 @@
 												<Tooltip content={model.name} className="min-w-0" placement="top-start">
 													<a
 														href={`/?model=${encodeURIComponent(model.id)}`}
-														class="truncate text-[0.8125rem] leading-5 text-gray-800 group-hover:underline dark:text-gray-200"
+														class="block truncate text-[0.8125rem] leading-5 text-gray-800 group-hover:underline dark:text-gray-200"
 													>
 														{model.name}
 													</a>
 												</Tooltip>
 
 												<div
-													class="min-w-0 max-w-[40%] shrink-0 truncate text-[0.6875rem] leading-5 text-gray-500"
+													class="hidden min-w-0 max-w-[40%] shrink-0 truncate text-[0.6875rem] leading-5 text-gray-500 sm:block"
 												>
 													{model.id}
 												</div>

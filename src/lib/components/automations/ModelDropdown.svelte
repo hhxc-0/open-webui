@@ -90,8 +90,8 @@
 
 			{#each filteredModels as model (model.id)}
 				<button
-					class="h-[1.6875rem] px-2 rounded-xl w-full text-left text-[0.8125rem] {model_id === model.id
-						? 'text-gray-900 dark:text-gray-100'
+					class="h-[1.6875rem] px-2 rounded-xl w-full text-left text-[0.8125rem] {model_id ===
+					model.id						? 'text-gray-900 dark:text-gray-100'
 						: 'text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'}"
 					type="button"
 					on:click={() => {
@@ -108,6 +108,9 @@
 							class="rounded-full size-5 items-center mr-2"
 							loading="lazy"
 							on:error={(e) => {
+								// LICENSE covers this Open WebUI fallback logo.
+								// Do not alter, remove, obscure, or replace it except as LICENSE permits:
+								// https://docs.openwebui.com/license.
 								e.currentTarget.src = '/favicon.png';
 							}}
 						/>
