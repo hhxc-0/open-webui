@@ -120,10 +120,6 @@
 		);
 	}
 
-	$: if (loaded) {
-		adminGroupCount.set(filteredGroups.length);
-	}
-
 	/** @type {any} */
 	let defaultPermissions = {};
 

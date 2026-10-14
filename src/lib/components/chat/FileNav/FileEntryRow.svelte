@@ -24,6 +24,9 @@
 	export let terminalKey: string = '';
 
 	export let onOpen: (entry: FileEntry) => void = () => {};
+	export let onSelectForComparison: (() => void) | undefined = undefined;
+	export let onCompareWithSelected: (() => void) | undefined = undefined;
+	export let comparisonPath: string | null = null;
 	export let onDownload: (path: string) => void = () => {};
 	export let onDelete: (path: string, name: string) => void = () => {};
 	export let onMove: (sources: string[], destFolder: string) => void | Promise<void> = () => {};
@@ -389,44 +392,37 @@
 							</div>
 						</button>
 					{/if}
-					{#if entry.type === 'directory'}
+					{#if entry.type === 'file' && onSelectForComparison}
 						<button
 							type="button"
 							class={menuItemClass}
-							on:click={(e) => {
-								e.stopPropagation();
+							on:click|stopPropagation={() => {
 								menuOpen = false;
-								onToggleExpand(directoryPath);
+								onSelectForComparison?.();
 							}}
 						>
-							<Icon
-								name={expanded ? 'chevron-down' : 'chevron-right'}
-								size={12}
-								strokeWidth={1.4}
-							/>
-							<div class="flex items-center">
-								{expanded ? $i18n.t('Collapse') : $i18n.t('Expand')}
-							</div>
+							<Icon name="page" size={12} /><span>{$i18n.t('Select for Compare')}</span>
 						</button>
-					{:else}
-						<button
-							type="button"
-							class={menuItemClass}
-							on:click={(e) => {
-								e.stopPropagation();
-								menuOpen = false;
-								onDownload(entryPath);
-							}}
-						>
-							<Icon name="download" size={12} strokeWidth={1.4} />
-							<div class="flex items-center">{$i18n.t('Download')}</div>
-						</button>
+						{#if onCompareWithSelected}
+							<button
+								type="button"
+								class="{menuItemClass} disabled:opacity-40"
+								disabled={comparisonPath === entryPath}
+								on:click|stopPropagation={() => {
+									menuOpen = false;
+									onCompareWithSelected?.();
+								}}
+							>
+								<Icon name="split-horizontal" size={12} /><span
+									>{$i18n.t('Compare with Selected')}</span
+								>
+							</button>
+						{/if}
 					{/if}
-
 					{#if entry.type === 'directory'}
 						<button
 							type="button"
-							class="select-none flex h-7 w-full items-center gap-2 rounded-lg px-2 text-xs hover:bg-gray-50/40 dark:hover:bg-white/4 transition"
+							class={menuItemClass}
 							on:click={(e) => {
 								e.stopPropagation();
 								menuOpen = false;
@@ -445,7 +441,7 @@
 					{:else}
 						<button
 							type="button"
-							class="select-none flex h-7 w-full items-center gap-2 rounded-lg px-2 text-xs hover:bg-gray-50/40 dark:hover:bg-white/4 transition"
+							class={menuItemClass}
 							on:click={(e) => {
 								e.stopPropagation();
 								menuOpen = false;

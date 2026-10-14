@@ -596,17 +596,6 @@
 	</div>
 </ConfirmDialog>
 
-<ConfirmDialog
-	bind:show={showDeleteAPIKeyConfirm}
-	title={$i18n.t('Delete API Key?')}
-	confirmLabel={$i18n.t('Delete')}
-	on:confirm={deleteAPIKeyHandler}
->
-	<div class="text-sm text-gray-500">
-		{$i18n.t('This will revoke the current API key.')}
-	</div>
-</ConfirmDialog>
-
 <Modal size="sm" bind:show={variableModalOpen}>
 	<form class="p-4" on:submit|preventDefault={saveVariableForm}>
 		<h2 class="mb-3 text-sm font-medium text-gray-900 dark:text-white">

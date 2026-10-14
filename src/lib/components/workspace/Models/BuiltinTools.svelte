@@ -17,10 +17,6 @@
 			label: $i18n.t('settings.admin.models.builtinTools.userInput.label'),
 			description: $i18n.t('settings.admin.models.builtinTools.userInput.description')
 		},
-		user_input: {
-			label: $i18n.t('Ask User'),
-			description: $i18n.t('Pause a response to ask the user a clarifying question')
-		},
 		memory: {
 			label: $i18n.t('settings.admin.models.builtinTools.memory.label'),
 			description: $i18n.t('settings.admin.models.builtinTools.memory.description')

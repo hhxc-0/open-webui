@@ -9,17 +9,19 @@
 	const FALLBACK_SRC = `${WEBUI_BASE_URL}/static/favicon.png`;
 
 	export let src = FALLBACK_SRC;
+	export let allowExternal = false;
 </script>
 
 <img
 	aria-hidden="true"
-	src={safeImageUrl(src)}
+	src={safeImageUrl(src, allowExternal)}
 	class=" {className} object-cover rounded-2xl"
 	alt="profile"
 	draggable="false"
 	on:error={(e) => {
-		if (!e.currentTarget.src.endsWith(FALLBACK_SRC)) {
-			e.currentTarget.src = FALLBACK_SRC;
+		const image = e.currentTarget as HTMLImageElement;
+		if (!image.src.endsWith(FALLBACK_SRC)) {
+			image.src = FALLBACK_SRC;
 		}
 	}}
 />

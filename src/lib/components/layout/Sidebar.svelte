@@ -654,6 +654,12 @@
 		}
 	});
 
+	onMount(() => {
+		const socketInstance = $socket;
+		socketInstance?.on('connect', initChannels);
+		return () => socketInstance?.off('connect', initChannels);
+	});
+
 	onMount(async () => {
 		try {
 			const width = Number(localStorage.getItem('sidebarWidth'));

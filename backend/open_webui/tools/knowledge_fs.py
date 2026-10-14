@@ -87,21 +87,55 @@ def normalize_regex(pattern: str) -> str:
     return pattern.replace(r'\|', '|').replace(r'\|', '|')
 
 
-def validate_regex_quantifiers(pattern: str) -> str | None:
-    """Reject counted quantifiers that make regex compilation expand too much."""
-    quantifier_expansion = 1
-    for quantifier in _COUNTED_QUANTIFIER_RE.finditer(pattern):
-        count_text = quantifier.group(1)
-        count = int(count_text) if len(count_text) <= 6 else MAX_REGEX_QUANTIFIER_COUNT + 1
-        if count > MAX_REGEX_QUANTIFIER_COUNT:
-            return f'Regex quantifier counts over {MAX_REGEX_QUANTIFIER_COUNT:g} are not supported'
+def _compile_search_regex(pattern: str, case_insensitive: bool, literal: bool = False) -> tuple:
+    try:
+        options = re2.Options()
+        options.case_sensitive = not case_insensitive
+        options.literal = literal
+        options.max_mem = 1 << 20  # Bound compiled programs and the engine's matching cache to 1 MiB.
+        options.log_errors = False
+        return re2.compile(pattern if literal else normalize_regex(pattern), options=options), None
+    except re2.error as e:
+        return None, f'Invalid or unsupported regex (RE2 syntax): {e}'
 
-        # ponytail: conservative expansion catches nested quantifier bombs without mirroring regex syntax.
-        quantifier_expansion *= max(count, 1)
-        if quantifier_expansion > MAX_REGEX_QUANTIFIER_EXPANSION:
-            return 'Regex quantifiers expand too much, lower the counts'
 
-    return None
+def build_span_matcher(pattern: str, case_insensitive: bool = False, *, deadline: float | None = None) -> tuple:
+    """Yield non-empty, non-overlapping character spans against the original text."""
+    deadline = deadline if deadline is not None else time.monotonic() + MATCH_BUDGET_SECONDS
+    if len(pattern) > MAX_SEARCH_PATTERN_LENGTH:
+        return None, f'Search patterns over {MAX_SEARCH_PATTERN_LENGTH} characters are not supported'
+    if not pattern or not pattern.strip():
+        return None, 'Pattern is required'
+    regex = is_regex_pattern(pattern)
+    if regex or case_insensitive:
+        compiled, error = _compile_search_regex(pattern, case_insensitive, literal=not regex)
+        if error:
+            return None, error
+
+        def spans(line):
+            for match in compiled.finditer(line):
+                yield match.span()
+
+    else:
+
+        def spans(line):
+            offset = 0
+            while (start := line.find(pattern, offset)) != -1:
+                offset = start + len(pattern)
+                yield start, offset
+
+    def checked_spans(line):
+        if time.monotonic() >= deadline:
+            raise MatchBudgetExceeded(f'Search exceeded {MATCH_BUDGET_SECONDS:g}s, narrow the pattern')
+        for start, end in spans(line):
+            if time.monotonic() >= deadline:
+                raise MatchBudgetExceeded(f'Search exceeded {MATCH_BUDGET_SECONDS:g}s, narrow the pattern')
+            if end > start:
+                yield start, end
+        if time.monotonic() >= deadline:
+            raise MatchBudgetExceeded(f'Search exceeded {MATCH_BUDGET_SECONDS:g}s, narrow the pattern')
+
+    return checked_spans, None
 
 
 def build_matcher(pattern: str, case_insensitive: bool = False, use_regex: bool = False) -> tuple:
@@ -113,18 +147,9 @@ def build_matcher(pattern: str, case_insensitive: bool = False, use_regex: bool 
         use_regex = True
 
     if use_regex:
-        normalized = normalize_regex(pattern)
-        quantifier_error = validate_regex_quantifiers(normalized)
-        if quantifier_error:
-            return None, quantifier_error
-        try:
-            options = re2.Options()
-            options.case_sensitive = not case_insensitive
-            options.max_mem = 1 << 20  # Bound compiled programs and the engine's matching cache to 1 MiB.
-            options.log_errors = False
-            compiled = re2.compile(normalized, options=options)
-        except re2.error as e:
-            return None, f'Invalid or unsupported regex (RE2 syntax): {e}'
+        compiled, error = _compile_search_regex(pattern, case_insensitive)
+        if error:
+            return None, error
 
         budget = _active_budget.get() or MatchBudget()
 
