@@ -1,12 +1,30 @@
 <script lang="ts">
+	import { resolveLocalizedResource, resolveLocalizedFunction } from '$lib/utils/localizedContent';
+	import { functions as localizedFunctions } from '$lib/stores';
 	import { getContext, onDestroy, tick } from 'svelte';
 	import { fly } from 'svelte/transition';
 
-	import { user, tools as _tools, skills as _skills, toolServers } from '$lib/stores';
+	import {
+		chatId,
+		config,
+		selectedTerminalId,
+		settings,
+		terminalServers,
+		terminalSkills,
+		user,
+		tools as _tools,
+		skills as _skills,
+		toolServers
+	} from '$lib/stores';
 
 	import { deleteOAuthSession } from '$lib/apis/auths';
 	import { getTools } from '$lib/apis/tools';
 	import { getSkills } from '$lib/apis/skills';
+	import {
+		listTerminalSkills,
+		resolveTerminalConnection,
+		type TerminalSkill
+	} from '$lib/apis/terminal';
 
 	import { toast } from 'svelte-sonner';
 
@@ -76,6 +94,14 @@
 	let show = false;
 	let tab = '';
 
+	const setWebSearchMode = (mode: '' | 'external' | 'native') => {
+		webSearchMode = mode;
+		if (mode && $config?.features?.enable_web_search_confirmation) {
+			show = false;
+		}
+		onWebSearchToggle(mode);
+	};
+
 	let tools: Record<string, IntegrationItem> | null = null;
 	let skills: Record<string, IntegrationItem> | null = null;
 	let toolQuery = '';
@@ -113,14 +139,22 @@
 
 	const setTools = (toolItems: IntegrationItem[] | null, query = '') => {
 		const q = query.trim().toLowerCase();
-		const items = (toolItems ?? []).reduce<Record<string, IntegrationItem>>((a, tool) => {
-			a[tool.id] = {
-				...tool,
-				name: tool.name,
-				description: tool.meta?.description
-			};
-			return a;
-		}, {});
+		const items = (toolItems ?? [])
+			.filter(
+				(tool) =>
+					!q ||
+					`${tool.name} ${resolveLocalizedResource(tool, $i18n.language)} ${resolveLocalizedResource(tool, $i18n.language, 'description')}`
+						.toLowerCase()
+						.includes(q)
+			)
+			.reduce<Record<string, IntegrationItem>>((a, tool) => {
+				a[tool.id] = {
+					...tool,
+					name: tool.name,
+					description: tool.meta?.description
+				};
+				return a;
+			}, {});
 
 		for (const serverIdx in ($toolServers ?? []) as any[]) {
 			const server = (($toolServers ?? []) as any[])[serverIdx];
@@ -147,7 +181,14 @@
 
 	const setSkills = (skillItems: IntegrationItem[] | null, query = '') => {
 		skills = (skillItems ?? [])
-			.filter((skill) => skill.is_active)
+			.filter(
+				(skill) =>
+					skill.is_active &&
+					(!query.trim() ||
+						`${skill.name} ${resolveLocalizedResource(skill, $i18n.language)} ${resolveLocalizedResource(skill, $i18n.language, 'description')}`
+							.toLowerCase()
+							.includes(query.trim().toLowerCase()))
+			)
 			.reduce<Record<string, IntegrationItem>>((a, skill) => {
 				a[skill.id] = {
 					...skill,
@@ -162,17 +203,22 @@
 		}
 	};
 
+	const getTerminalSkillItems = async (): Promise<TerminalSkill[]> => {
+		const connection = resolveTerminalConnection(
+			$selectedTerminalId,
+			$terminalServers ?? [],
+			$settings?.terminalServers ?? [],
+			localStorage.token
+		);
+		const items = await listTerminalSkills(connection, $chatId || null).catch(() => []);
+		terminalSkills.set(items);
+		return items;
+	};
+
 	const loadTools = async (query = toolQuery) => {
 		const requestId = ++toolRequestId;
 		const q = query.trim();
 		searchedToolQuery = query;
-
-		if (q) {
-			const toolItems = await getTools(localStorage.token, q).catch(() => []);
-			if (requestId !== toolRequestId) return;
-			setTools(toolItems, q);
-			return;
-		}
 
 		if ($_tools === null) {
 			await _tools.set(await getTools(localStorage.token));
@@ -186,18 +232,13 @@
 		const q = query.trim();
 		searchedSkillQuery = query;
 
-		if (q) {
-			const skillItems = await getSkills(localStorage.token, q).catch(() => []);
-			if (requestId !== skillRequestId) return;
-			setSkills(skillItems, q);
-			return;
-		}
-
 		if ($_skills === null) {
 			await _skills.set(await getSkills(localStorage.token));
 		}
 		if (requestId !== skillRequestId) return;
-		setSkills($_skills, q);
+		const terminalItems = await getTerminalSkillItems();
+		if (requestId !== skillRequestId) return;
+		setSkills([...($_skills ?? []), ...terminalItems], q);
 	};
 
 	const scheduleToolSearch = () => {
@@ -253,6 +294,9 @@
 			selectedSkillIds = selectedSkillIds.filter((id) => id !== skillId);
 		}
 	};
+
+	const skillSourceLabel = (skill: IntegrationItem | undefined) =>
+		skill?.source === 'terminal' ? $i18n.t('Terminal') : '';
 
 	onDestroy(() => {
 		clearTimeout(toolSearchDebounceTimer);
@@ -333,7 +377,15 @@
 
 					{#if toggleFilters && toggleFilters.length > 0}
 						{#each toggleFilters.sort( (a, b) => a.name.localeCompare( b.name, undefined, { sensitivity: 'base' } ) ) as filter, filterIdx (filter.id)}
-							<Tooltip content={filter?.description} placement="top-start">
+							<Tooltip
+								content={resolveLocalizedFunction(
+									filter,
+									$localizedFunctions,
+									$i18n.language,
+									'description'
+								)}
+								placement="top-start"
+							>
 								<button
 									class="flex w-full justify-between gap-2 items-center h-[1.6875rem] px-2 text-[0.8125rem] font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
 									aria-pressed={selectedFilterIds.includes(filter.id)}
@@ -356,7 +408,11 @@
 																? 'dark:invert-[80%]'
 																: ''}"
 															style="fill: currentColor;"
-															alt={filter.name}
+															alt={resolveLocalizedFunction(
+																filter,
+																$localizedFunctions,
+																$i18n.language
+															)}
 														/>
 													</div>
 												{:else}
@@ -364,7 +420,9 @@
 												{/if}
 											</div>
 
-											<div class=" truncate">{filter?.name}</div>
+											<div class=" truncate">
+												{resolveLocalizedFunction(filter, $localizedFunctions, $i18n.language)}
+											</div>
 										</div>
 									</div>
 
@@ -400,24 +458,25 @@
 					{#if showWebSearchButton}
 						<div class="px-2 py-1 text-[0.8125rem] font-normal">
 							<div class="flex h-[1.6875rem] items-center gap-2">
-								<div class="shrink-0">
-									<GlobeAlt className="size-3.5" strokeWidth="1.75" />
-								</div>
+								<div class="shrink-0"><GlobeAlt className="size-3.5" strokeWidth="1.75" /></div>
 								<div class="truncate">{$i18n.t('Web Search')}</div>
 							</div>
 							<div class="grid grid-cols-3 gap-1">
-								{#each [['', $i18n.t('Off')], ['external', $i18n.t('External')], ['native', $i18n.t('Native')]] as [mode, label]}
+								{#each [
+									{ mode: '', label: $i18n.t('Off') },
+									{ mode: 'external', label: $i18n.t('External') },
+									{ mode: 'native', label: $i18n.t('Native') }
+								] as option}
 									<button
-										class="flex-1 py-0.5 text-xs rounded-lg transition-colors
-											{webSearchMode === mode
+										type="button"
+										aria-pressed={webSearchMode === option.mode}
+										class="flex-1 rounded-lg py-0.5 text-xs transition-colors {webSearchMode === option.mode
 											? 'bg-sky-100 text-sky-600 dark:bg-sky-400/20 dark:text-sky-300'
-											: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}"
-										on:click={() => {
-											webSearchMode = mode;
-											onWebSearchToggle(mode);
-										}}
+											: 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'}"
+										on:click={() =>
+										setWebSearchMode(option.mode as '' | 'external' | 'native')}
 									>
-										{label}
+										{option.label}
 									</button>
 								{/each}
 							</div>
@@ -572,13 +631,29 @@
 										{/if}
 										<div class="flex-1 truncate">
 											<div class="flex flex-1 gap-2 items-center">
-												<Tooltip content={tools?.[toolId]?.name ?? ''} placement="top">
+												<Tooltip
+													content={resolveLocalizedResource(
+														tools?.[toolId],
+														$i18n.language,
+														'name'
+													)}
+													placement="top"
+												>
 													<div class="shrink-0">
 														<Wrench />
 													</div>
 												</Tooltip>
-												<Tooltip content={tools?.[toolId]?.description ?? ''} placement="top-start">
-													<div class=" truncate">{tools?.[toolId]?.name}</div>
+												<Tooltip
+													content={resolveLocalizedResource(
+														tools?.[toolId],
+														$i18n.language,
+														'description'
+													)}
+													placement="top-start"
+												>
+													<div class=" truncate">
+														{resolveLocalizedResource(tools?.[toolId], $i18n.language, 'name')}
+													</div>
 												</Tooltip>
 											</div>
 										</div>
@@ -682,17 +757,35 @@
 									>
 										<div class="flex-1 truncate">
 											<div class="flex flex-1 gap-2 items-center">
-												<Tooltip content={skills?.[skillId]?.name ?? ''} placement="top">
+												<Tooltip
+													content={resolveLocalizedResource(
+														skills?.[skillId],
+														$i18n.language,
+														'name'
+													)}
+													placement="top"
+												>
 													<div class="shrink-0">
 														<Cube className="size-3.5" strokeWidth="1.75" />
 													</div>
 												</Tooltip>
 												<Tooltip
-													content={skills?.[skillId]?.description ?? ''}
+													content={resolveLocalizedResource(
+														skills?.[skillId],
+														$i18n.language,
+														'description'
+													)}
 													placement="top-start"
 												>
-													<div class=" truncate">{skills?.[skillId]?.name}</div>
+													<div class=" truncate">
+														{resolveLocalizedResource(skills?.[skillId], $i18n.language, 'name')}
+													</div>
 												</Tooltip>
+												{#if skillSourceLabel(skills?.[skillId])}
+													<div class="shrink-0 text-[0.6875rem] text-gray-500 dark:text-gray-400">
+														{skillSourceLabel(skills?.[skillId])}
+													</div>
+												{/if}
 											</div>
 										</div>
 

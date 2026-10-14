@@ -5,7 +5,7 @@
 	import { settings, config } from '$lib/stores';
 	import { injectCsp } from '$lib/utils/csp';
 	import { isCodeFile } from '$lib/utils/codeHighlight';
-	import { initMermaid, renderMermaidDiagram } from '$lib/utils';
+	import { initMermaid, renderMermaidDiagram, sanitizeSvg } from '$lib/utils';
 	import Spinner from '../../common/Spinner.svelte';
 	import PdfPagesPreview from '../../common/PdfPagesPreview.svelte';
 	import PanzoomContainer from '../../common/PanzoomContainer.svelte';
@@ -19,7 +19,7 @@
 	let pdfPagesPreviewRef: PdfPagesPreview;
 	let fileCodeEditorRef: FileCodeEditor;
 
-	const i18n = getContext('i18n');
+	const i18n: any = getContext('i18n');
 
 	export let selectedFile: string | null = null;
 	export let fileLoading = false;
@@ -46,6 +46,7 @@
 
 	export let overlay = false;
 	export let readOnly = false;
+	export let allowScripts: boolean | undefined = undefined;
 
 	export let onSave: ((content: string) => Promise<void>) | null = null;
 	export let searchTarget: {
@@ -242,7 +243,7 @@
 			jsonError = null;
 		} catch (e) {
 			parsedJson = undefined;
-			jsonError = e instanceof Error ? e.message : 'Invalid JSON';
+			jsonError = e instanceof Error ? e.message : $i18n.t('Invalid JSON');
 		}
 	} else {
 		parsedJson = undefined;
@@ -372,6 +373,7 @@
 		{#if searchTarget}
 			<div class="absolute inset-0">
 				<FileCodeEditor
+					{readOnly}
 					bind:this={fileCodeEditorRef}
 					value={fileContent ?? ''}
 					filePath={selectedFile}
@@ -385,7 +387,7 @@
 			{/if}
 			<iframe
 				src={serveUrl}
-				sandbox="{($settings?.iframeSandboxAllowScripts ?? true)
+				sandbox="{(allowScripts ?? $settings?.iframeSandboxAllowScripts ?? true)
 					? 'allow-scripts'
 					: ''}{($settings?.iframeSandboxAllowDownloads ?? true)
 					? ' allow-downloads'
@@ -393,7 +395,7 @@
 					? ' allow-forms'
 					: ''}{($settings?.iframeSandboxAllowSameOrigin ?? false) ? ' allow-same-origin' : ''}"
 				class="w-full h-full border-none bg-white"
-				title="HTML Preview"
+				title={$i18n.t('HTML Preview')}
 			/>
 		{:else if isHtml && !showRaw}
 			{#if overlay}
@@ -401,7 +403,7 @@
 			{/if}
 			<iframe
 				srcdoc={injectCsp(fileContent, $config?.ui?.iframe_csp ?? '')}
-				sandbox="{($settings?.iframeSandboxAllowScripts ?? true)
+				sandbox="{(allowScripts ?? $settings?.iframeSandboxAllowScripts ?? true)
 					? 'allow-scripts'
 					: ''}{($settings?.iframeSandboxAllowDownloads ?? true)
 					? ' allow-downloads'
@@ -409,11 +411,12 @@
 					? ' allow-forms'
 					: ''}{($settings?.iframeSandboxAllowSameOrigin ?? false) ? ' allow-same-origin' : ''}"
 				class="w-full h-full border-none bg-white"
-				title="HTML Preview"
+				title={$i18n.t('HTML Preview')}
 			/>
 		{:else if isHtml && showRaw}
 			<div class="absolute inset-0">
 				<FileCodeEditor
+					{readOnly}
 					bind:this={fileCodeEditorRef}
 					value={fileContent ?? ''}
 					filePath={selectedFile}
@@ -427,6 +430,7 @@
 		{:else if isMarkdown && showRaw}
 			<div class="absolute inset-0">
 				<FileCodeEditor
+					{readOnly}
 					bind:this={fileCodeEditorRef}
 					value={fileContent ?? ''}
 					filePath={selectedFile}
@@ -462,7 +466,13 @@
 			</div>
 		{:else if isNotebook && !showRaw && parsedNotebook}
 			<div class="overflow-auto h-full">
-				<NotebookView notebook={parsedNotebook} filePath={selectedFile ?? ''} {baseUrl} {apiKey} />
+				<NotebookView
+					notebook={parsedNotebook}
+					filePath={selectedFile ?? ''}
+					{baseUrl}
+					{apiKey}
+					{readOnly}
+				/>
 			</div>
 		{:else if isJson && !showRaw && parsedJson !== undefined}
 			<div class="overflow-auto h-full">
@@ -470,20 +480,20 @@
 			</div>
 		{:else if isJson && !showRaw && jsonError}
 			<div class="p-3 text-xs">
-				<div class="text-red-500 mb-2">JSON parse error: {jsonError}</div>
+				<div class="text-red-500 mb-2">
+					{$i18n.t('JSON parse error: {{error}}', { error: jsonError })}
+				</div>
 				<pre
 					class="text-xs font-mono text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-all leading-relaxed">{fileContent}</pre>
 			</div>
 		{:else if isSvg && !showRaw && fileContent}
 			<div class="svg-preview w-full h-full flex items-center justify-center overflow-auto p-3">
-				{@html DOMPurify.sanitize(fileContent, {
-					USE_PROFILES: { svg: true, svgFilters: true },
-					ADD_TAGS: ['use']
-				})}
+				{@html sanitizeSvg(fileContent)}
 			</div>
 		{:else if isCode && !showRaw}
 			<div class="absolute inset-0">
 				<FileCodeEditor
+					{readOnly}
 					bind:this={fileCodeEditorRef}
 					value={fileContent ?? ''}
 					filePath={selectedFile}

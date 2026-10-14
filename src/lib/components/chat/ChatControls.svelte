@@ -18,7 +18,7 @@
 	} from '$lib/stores';
 
 	import Controls from './Controls/Controls.svelte';
-	import CallOverlay from './MessageInput/CallOverlay.svelte';
+	import CallPanel from './MessageInput/CallPanel.svelte';
 	import Drawer from '../common/Drawer.svelte';
 	import ResizableSidePanel from '../common/ResizableSidePanel.svelte';
 	import Artifacts from './Artifacts.svelte';
@@ -41,6 +41,8 @@
 	export let params = {};
 	export let prompt = '';
 
+	export let bridge: import('$lib/utils/realtime').RealtimeCall;
+	export let callMode = 'current';
 	export let eventTarget: EventTarget;
 	export let submitPrompt: Function;
 	export let stopResponse: Function;
@@ -77,6 +79,7 @@
 		chatContextAvailable(selectedSystemTerminal) &&
 		!(chatContextNeedsSavedChat(selectedSystemTerminal) && !isSavedChatId(chatId));
 	$: terminalFilesAvailable = !!(
+		$config?.features?.enable_tool_servers &&
 		$selectedTerminalId &&
 		(selectedSystemTerminalAvailable ||
 			(!selectedSystemTerminal &&
@@ -209,7 +212,9 @@
 					<div
 						class="h-full max-h-[100dvh] bg-white text-gray-700 dark:bg-black dark:text-gray-300 flex justify-center"
 					>
-						<CallOverlay
+						<CallPanel
+							{bridge}
+							bind:callMode
 							bind:files
 							{submitPrompt}
 							{stopResponse}
@@ -345,7 +350,9 @@
 			>
 				{#if $showCallOverlay}
 					<div class="w-full h-full flex justify-center">
-						<CallOverlay
+						<CallPanel
+							{bridge}
+							bind:callMode
 							bind:files
 							{submitPrompt}
 							{stopResponse}
@@ -398,17 +405,6 @@
 										{$i18n.t('Overview')}
 									</button>
 								{/if}
-								{#if showContextTab}
-									<button
-										class="px-2.5 py-1 text-sm rounded-lg transition whitespace-nowrap {activeTab ===
-										'context'
-											? 'bg-gray-100/40 dark:bg-gray-800/25 font-normal text-gray-700 dark:text-gray-200'
-											: 'text-gray-500 dark:text-gray-400 hover:bg-gray-100/30 dark:hover:bg-gray-800/20 hover:text-gray-600 dark:hover:text-gray-300'}"
-										on:click={() => (activeTab = 'context')}
-									>
-										{$i18n.t('Context')}
-									</button>
-								{/if}
 							</div>
 							<button
 								class="p-1 rounded-lg text-gray-500 dark:text-gray-400"
@@ -431,7 +427,7 @@
 						<div
 							class="flex-1 min-h-0 {activeTab === 'overview'
 								? 'h-full'
-								: activeTab === 'controls' || activeTab === 'context'
+								: activeTab === 'controls'
 									? 'overflow-y-auto px-3 pt-1'
 									: ''}"
 						>
@@ -453,8 +449,6 @@
 								<FileNav overlay={dragged} {chatId} />
 							{:else if activeTab === 'files' && codeInterpreterEnabled}
 								<PyodideFileNav overlay={dragged} />
-							{:else if activeTab === 'context'}
-								<ContextView {history} {prompt} {files} chatParams={params} {modelId} />
 							{:else}
 								<Controls embed={true} {models} bind:chatFiles bind:params />
 							{/if}

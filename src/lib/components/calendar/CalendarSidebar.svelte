@@ -151,7 +151,8 @@
 
 		<div
 			class="grid grid-cols-7 text-center text-[0.5625rem] text-gray-400 dark:text-gray-500 mb-0.5"
-		>			{#each ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as d}
+		>
+			{#each ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as d}
 				<div class="py-0.5">{d}</div>
 			{/each}
 		</div>

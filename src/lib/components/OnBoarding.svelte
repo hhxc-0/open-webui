@@ -73,7 +73,8 @@
 				<div class="max-w-3xl">
 					<!-- LICENSE covers this Open WebUI welcome identifier.
 					Do not alter, remove, obscure, or replace it except as LICENSE permits:
-					https://docs.openwebui.com/license. -->					<div class="mb-4 text-[0.6875rem] font-medium tracking-[0.18em] uppercase opacity-35">
+					https://docs.openwebui.com/license. -->
+					<div class="mb-4 text-[0.6875rem] font-medium tracking-[0.18em] uppercase opacity-35">
 						Open WebUI
 					</div>
 
