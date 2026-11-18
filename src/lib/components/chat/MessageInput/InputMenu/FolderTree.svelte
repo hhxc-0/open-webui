@@ -1,34 +1,44 @@
 <script lang="ts">
-	import { onMount, tick, getContext } from 'svelte';
+	import { onMount, getContext } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
 	import { getFolders } from '$lib/apis/folders';
 	import { getChatListByFolderId, getChatsByFolderId } from '$lib/apis/chats';
-	import { chatId } from '$lib/stores';
 
 	import ChevronDown from '$lib/components/icons/ChevronDown.svelte';
 	import ChevronRight from '$lib/components/icons/ChevronRight.svelte';
 	import FolderOpen from '$lib/components/icons/FolderOpen.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getContext<typeof import('$lib/i18n').default>('i18n');
 
-	export let onSelect = (item, batch = false) => {};
+	type Folder = { id: string; name: string; parent_id?: string | null };
+	type FolderChat = { id: string; title?: string; name?: string };
+	type ChatReference = {
+		type: 'chat';
+		id: string;
+		name: string;
+		collection_name: string;
+		status: 'processed';
+	};
+
+	export let chatId = '';
+	export let onSelect: (item: ChatReference, batch?: boolean) => void = () => {};
 
 	let loaded = false;
-	let folders = {}; // { [id]: { id, name, parent_id, childrenIds: [] } }
-	let topFolderIds = []; // folder ids with no parent
+	let folders: Record<string, Folder & { childrenIds: string[] }> = {};
+	let topFolderIds: string[] = [];
 
 	// Track expanded state and loaded chats per folder
-	let expanded = {}; // { [folderId]: boolean }
-	let folderChats = {}; // { [folderId]: chat[] }
-	let loadingFolders = {}; // { [folderId]: boolean }
+	let expanded: Record<string, boolean> = {};
+	let folderChats: Record<string, FolderChat[]> = {};
+	let loadingFolders: Record<string, boolean> = {};
 
 	onMount(async () => {
 		try {
-			const res = await getFolders(localStorage.token);
+			const res: Folder[] | null = await getFolders(localStorage.token);
 			if (res) {
-				const map = {};
+				const map: typeof folders = {};
 				for (const f of res) {
 					map[f.id] = { ...f, childrenIds: [] };
 				}
@@ -65,8 +75,8 @@
 			loadingFolders = loadingFolders;
 
 			try {
-				const chats = await getChatListByFolderId(localStorage.token, folderId);
-				folderChats[folderId] = (chats ?? []).filter((c) => c.id !== $chatId);
+				const chats: FolderChat[] | null = await getChatListByFolderId(localStorage.token, folderId);
+				folderChats[folderId] = (chats ?? []).filter((c) => c.id !== chatId);
 			} catch (e) {
 				console.error('Failed to load folder chats:', e);
 				folderChats[folderId] = [];
@@ -80,9 +90,9 @@
 
 	const addAllChatsInFolder = async (folderId: string) => {
 		try {
-			const chats = await getChatsByFolderId(localStorage.token, folderId);
+			const chats: FolderChat[] | null = await getChatsByFolderId(localStorage.token, folderId);
 			if (chats) {
-				const filtered = chats.filter((c) => c.id !== $chatId);
+				const filtered = chats.filter((c) => c.id !== chatId);
 				for (const chat of filtered) {
 					onSelect(
 						{
@@ -105,7 +115,7 @@
 		}
 	};
 
-	const addChat = (chat: any) => {
+	const addChat = (chat: FolderChat) => {
 		onSelect({
 			type: 'chat',
 			id: chat.id,
@@ -139,7 +149,7 @@
 	</div>
 {/if}
 
-{#snippet folderRow(folderId, depth)}
+{#snippet folderRow(folderId: string, depth: number)}
 	{@const folder = folders[folderId]}
 	{#if folder}
 		<div>

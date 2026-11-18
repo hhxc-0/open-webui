@@ -26,7 +26,7 @@
 		'w-fit py-1 text-[0.9375rem] text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition';
 
 	export let id = '';
-	export let title = null;
+	export let title: string | null = null;
 	export let attributes = null;
 	export let chevronClassName = 'size-3';
 	export let chevronStrokeWidth = '2.75';
@@ -131,7 +131,7 @@
 		>
 			<div>
 				<div class="flex items-start justify-between">
-					<slot />
+					<slot {open} />
 
 					{#if chevron}
 						<div class="flex self-start translate-y-1">

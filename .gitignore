@@ -313,3 +313,7 @@ cypress/screenshots
 # Claude Code worktrees
 .claude/worktrees/
 .cptr
+/evals/
+
+# Local temporary fixtures and screenshots
+/tmp/
