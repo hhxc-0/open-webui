@@ -308,66 +308,6 @@ async def clear_response_stream(redis, task_id: str | None):
         response_streams.pop(task_id, None)
 
 
-async def save_response_stream(
-    redis,
-    task_id: str | None,
-    chat_id: str | None,
-    message_id: str | None,
-    content: str,
-    output: list,
-):
-    if not task_id or not chat_id or not message_id:
-        return
-
-    data = {
-        'chat_id': chat_id,
-        'message_id': message_id,
-        'content': content,
-        'output': output,
-    }
-
-    if redis:
-        await redis.hset(REDIS_RESPONSE_STREAMS_KEY, task_id, dumps_bytes(data))
-        if REDIS_RESPONSE_STREAM_TTL > 0:
-            with suppress(Exception):
-                await redis.hexpire(REDIS_RESPONSE_STREAMS_KEY, REDIS_RESPONSE_STREAM_TTL, task_id)
-    else:
-        response_streams[task_id] = data
-
-
-async def get_response_streams_by_chat_id(redis, chat_id: str) -> list[dict]:
-    task_ids = await list_task_ids_by_item_id(redis, chat_id)
-    if not task_ids:
-        return []
-
-    if redis:
-        values = await redis.hmget(REDIS_RESPONSE_STREAMS_KEY, task_ids)
-        streams = []
-        for value in values:
-            if not value:
-                continue
-            try:
-                data = JSONCodec.loads(value)
-            except Exception:
-                continue
-            if data.get('chat_id') == chat_id:
-                streams.append(data)
-        return streams
-
-    return [
-        stream for task_id in task_ids if (stream := response_streams.get(task_id)) and stream.get('chat_id') == chat_id
-    ]
-
-
-async def clear_response_stream(redis, task_id: str | None):
-    if not task_id:
-        return
-    if redis:
-        await redis.hdel(REDIS_RESPONSE_STREAMS_KEY, task_id)
-    else:
-        response_streams.pop(task_id, None)
-
-
 async def stop_task(redis, task_id: str):
     """
     Cancel a running task and remove it from the global task list.
